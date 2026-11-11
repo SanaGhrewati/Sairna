@@ -1,549 +1,462 @@
-import { BsStars } from "react-icons/bs"
-import { CiCircleCheck, CiLocationOn } from "react-icons/ci"
-import { FaRegCircleCheck } from "react-icons/fa6"
 
-import masged from "../../assets/image/image.jpg"
+import { useEffect, useState } from "react";
+import { BsStars } from "react-icons/bs";
+import { CiCircleCheck, CiLocationOn } from "react-icons/ci";
+import { FaRegCircleCheck } from "react-icons/fa6";
+import { useNavigate } from "react-router-dom";
+import masged from "../../assets/image/image.jpg";
 
 function Hero() {
+  const navigate = useNavigate();
+
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [floatingY, setFloatingY] = useState(0);
+
+  const [mousePosition, setMousePosition] = useState({
+    x: 0,
+    y: 0,
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    let animationFrame;
+    let startTime;
+
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+
+      const elapsed = timestamp - startTime;
+      setFloatingY(Math.sin(elapsed / 1000) * 8);
+
+      animationFrame = requestAnimationFrame(animate);
+    };
+
+    animationFrame = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (event) => {
+      const x = (event.clientX / window.innerWidth - 0.5) * 2;
+      const y = (event.clientY / window.innerHeight - 0.5) * 2;
+
+      setMousePosition({ x, y });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, []);
+
   return (
     <section
       dir="rtl"
-      className="
-        relative
-        overflow-hidden
-        bg-bg
-      "
+      className="relative min-h-screen w-full overflow-hidden bg-bg"
     >
       <div
-        className="
-          max-w-[1200px]
-          mx-auto
-          px-6
-          pt-[58px]
-          pb-[75px]
-          grid
-          grid-cols-2
-          items-center
-          gap-[65px]
-          max-[1150px]:gap-[40px]
-          max-[900px]:grid-cols-1
-          max-[900px]:pt-[45px]
-          max-[900px]:pb-[55px]
-          max-[650px]:px-4
-          max-[650px]:pt-[32px]
-          max-[650px]:pb-[45px]
-        "
+        className={`
+          absolute inset-0 z-0 overflow-hidden
+          transition-all duration-[3000ms]
+          ease-[cubic-bezier(0.16,1,0.3,1)]
+          ${isLoaded ? "scale-100 opacity-100" : "scale-[0.94] opacity-0"}
+        `}
       >
-        <div className="min-w-0">
+        <img
+          src={masged}
+          alt="سيرنا"
+          className="
+            absolute inset-0
+            h-full w-full
+            object-cover
+            transition-transform
+            duration-[3500ms]
+            ease-[cubic-bezier(0.16,1,0.3,1)]
+          "
+          style={{
+            transform: `
+              scale(${isLoaded ? 1.06 : 1.16})
+              translate(
+                ${mousePosition.x * -4}px,
+                ${mousePosition.y * -4}px
+              )
+            `,
+          }}
+        />
 
-          <div
-            className="
-              inline-flex
-              items-center
-              gap-2
-              rounded-full
-              bg-soft-teal
-              text-primary-deep
-              px-[14px]
-              py-[5px]
-              text-[11px]
-              font-black
-              tracking-[0.12px]
-            "
-          >
-            <BsStars className="text-[14px]" />
-
-            <span>
-              أهلا فيك بسيرنا
-            </span>
-          </div>
-
-          <h1
-            className="
-              mt-[19px]
-              mb-[11px]
-              text-[clamp(48px,5.15vw,79px)]
-              leading-[1.33]
-              tracking-[-2.4px]
-              font-black
-              text-text
-              max-[1150px]:text-[clamp(45px,5vw,66px)]
-              max-[900px]:text-[49px]
-              max-[650px]:text-[40px]
-              max-[400px]:text-[36px]
-            "
-          >
-            المحطة الجاية ؟
-
-            <span
-              className="
-                block
-                bg-[linear-gradient(93deg,#078a91,#15ba9d_75%)]
-                bg-clip-text
-                text-transparent
-              "
-            >
-              .على كيفك
-            </span>
-          </h1>
-
-          <p
-            className="
-              max-w-[485px]
-              mb-[22px]
-              text-[16px]
-              leading-[2.15]
-              text-muted
-              max-[1150px]:text-[14px]
-              max-[900px]:text-[13px]
-              max-[650px]:text-[12px]
-            "
-          >
-            من حلب لدمشق، ومن الساحل للجزيرة.
-            لاقي الرحلة اللي بتناسبك، اختار مقعدك،
-            وخلّي الطريق علينا.
-          </p>
-
-          <div
-            className="
-              flex
-              items-center
-              flex-wrap
-              gap-[20px]
-              max-[900px]:gap-[14px]
-            "
-          >
-            <span
-              className="
-                flex
-                items-center
-                gap-[6px]
-                text-[11px]
-                font-extrabold
-                text-text
-              "
-            >
-              <CiCircleCheck
-                className="
-                  text-[18px]
-                  text-primary
-                "
-              />
-
-              حجز سهل
-            </span>
-
-            <span
-              className="
-                flex
-                items-center
-                gap-[6px]
-                text-[11px]
-                font-extrabold
-                text-text
-              "
-            >
-              <CiCircleCheck
-                className="
-                  text-[18px]
-                  text-primary
-                "
-              />
-
-              خيارات متنوعة
-            </span>
-
-            <span
-              className="
-                flex
-                items-center
-                gap-[6px]
-                text-[11px]
-                font-extrabold
-                text-text
-              "
-            >
-              <CiCircleCheck
-                className="
-                  text-[18px]
-                  text-primary
-                "
-              />
-
-              متابعة رحلتك
-            </span>
-          </div>
-
-          <div
-            className="
-              flex
-              items-center
-              gap-[14px]
-              mt-[40px]
-              max-[900px]:mt-[28px]
-            "
-          >
-            <div className="flex flex-row">
-              <span
-                className="
-                  w-[35px]
-                  h-[35px]
-                  rounded-full
-                  border-[3px]
-                  border-surface
-                  grid
-                  place-items-center
-                  bg-[#f3d2a6]
-                  text-[#5e3a36]
-                  text-[11px]
-                  font-black
-                  mr-[-7px]
-                "
-              >
-                م
-              </span>
-
-              <span
-                className="
-                  w-[35px]
-                  h-[35px]
-                  rounded-full
-                  border-[3px]
-                  border-surface
-                  grid
-                  place-items-center
-                  bg-[#c2dadb]
-                  text-[#36565d]
-                  text-[11px]
-                  font-black
-                  mr-[-7px]
-                "
-              >
-                س
-              </span>
-
-              <span
-                className="
-                  w-[35px]
-                  h-[35px]
-                  rounded-full
-                  border-[3px]
-                  border-surface
-                  grid
-                  place-items-center
-                  bg-[#e4bed1]
-                  text-[#674052]
-                  text-[11px]
-                  font-black
-                  mr-[-7px]
-                "
-              >
-                ع
-              </span>
-
-              <span
-                className="
-                  w-[35px]
-                  h-[35px]
-                  rounded-full
-                  border-[3px]
-                  border-surface
-                  grid
-                  place-items-center
-                  bg-[#b9d2ed]
-                  text-[#36516e]
-                  text-[11px]
-                  font-black
-                "
-              >
-                ر
-              </span>
-            </div>
-
-            <div>
-              <div
-                className="
-                  flex
-                  items-center
-                  gap-[3px]
-                  text-[#f7b843]
-                  text-[13px]
-                  leading-[1.5]
-                "
-              >
-                <span>★</span>
-                <span>★</span>
-                <span>★</span>
-                <span>★</span>
-                <span>★</span>
-
-                <b
-                  className="
-                    mr-[4px]
-                    text-[12px]
-                    tracking-normal
-                    text-text
-                  "
-                >
-                  4.9/5
-                </b>
-              </div>
-
-              <small
-                className="
-                  text-[10px]
-                  font-bold
-                  text-muted
-                "
-              >
-                تجربة سفر بتستاهل تجرّبها
-              </small>
-            </div>
-          </div>
-        </div>
+        <div className="absolute inset-0 bg-black/30" />
 
         <div
           className="
-            relative
-            min-w-0
-            px-[20px]
-            py-[18px]
-            pr-0
-            max-[900px]:px-5
-            max-[900px]:py-[10px]
+            absolute inset-0
+            bg-gradient-to-l
+            from-black/75
+            via-black/40
+            to-black/10
+          "
+        />
+
+        <div
+          className="
+            absolute inset-0
+            bg-gradient-to-t
+            from-black/55
+            via-transparent
+            to-black/10
+          "
+        />
+      </div>
+
+      <div
+        className="
+          relative z-10 mx-auto flex min-h-screen w-full
+          max-w-[1216px] items-center
+          px-5 py-24 sm:px-8 lg:px-10
+        "
+      >
+        <div
+          className="
+            grid w-full grid-cols-1 items-center
+            gap-14 lg:grid-cols-[1.05fr_.95fr] lg:gap-16
           "
         >
-          <div
-            className="
-              absolute
-              z-0
-              w-[220px]
-              h-[220px]
-              left-[-62px]
-              top-[-35px]
-              rounded-full
-              border-[1.5px]
-              border-dashed
-              border-primary
-              opacity-40
-              max-[650px]:w-[150px]
-              max-[650px]:h-[150px]
-              max-[650px]:left-[-30px]
-              max-[650px]:top-[-20px]
-            "
-          />
-
-          <div
-            className="
-              absolute
-              z-0
-              w-[150px]
-              h-[150px]
-              right-[-50px]
-              bottom-0
-              rounded-full
-              border-[1.5px]
-              border-dashed
-              border-primary
-              opacity-40
-              max-[650px]:w-[100px]
-              max-[650px]:h-[100px]
-              max-[650px]:right-[-20px]
-            "
-          />
-
-          <div
-            className="
-              relative
-              z-[1]
-              overflow-visible
-              rounded-[30px]
-              bg-soft-teal
-              shadow-[0_30px_70px_rgba(10,62,70,0.15)]
-              rotate-[-1.5deg]
-              max-[650px]:rounded-[20px]
-            "
-          >
-            <img
-              src={masged}
-              alt="صورة حقيقية للجامع الأموي في دمشق"
-              className="
-                block
-                w-full
-                aspect-[1.45]
-                object-cover
-                object-center
-                rounded-[30px]
-                saturate-[0.93]
-                contrast-[1.035]
-                max-[650px]:rounded-[20px]
-              "
-            />
-
+          <div className="order-1 text-right text-white lg:order-1">
             <div
-              className="
-                absolute
-                inset-0
-                pointer-events-none
-                rounded-[30px]
-                bg-[linear-gradient(180deg,transparent_56%,rgba(9,40,51,0.18))]
-                max-[650px]:rounded-[20px]
-              "
-            />
-
-            <span
-              className="
-                absolute
-                bottom-[14px]
-                left-[14px]
-                z-[2]
-                rounded-full
-                bg-surface/90
-                backdrop-blur-sm
-                px-[13px]
-                py-[6px]
-                text-[10px]
-                font-bold
-                text-text
-                shadow-[0_6px_15px_rgba(15,61,69,0.12)]
-                max-[650px]:bottom-[11px]
-                max-[650px]:left-[11px]
-                max-[650px]:text-[9px]
-              "
+              className={`
+                mb-5 inline-flex items-center gap-2
+                rounded-full border border-white/20
+                bg-white/10 px-4 py-2
+                text-[12px] font-extrabold
+                text-white backdrop-blur-md
+                transition-all duration-[1200ms] ease-out
+                ${
+                  isLoaded
+                    ? "translate-y-0 opacity-100"
+                    : "translate-y-8 opacity-0"
+                }
+              `}
+              style={{ transitionDelay: "500ms" }}
             >
-              صورة حقيقية من دمشق
-            </span>
+              <BsStars className="text-primary" />
+              <span>اهلا فيك بسيرنا</span>
+            </div>
 
-            <div
-              className="
-                absolute
-                z-[3]
-                top-[26px]
-                right-[-32px]
-                flex
-                items-center
-                gap-[10px]
-                rounded-[16px]
-                bg-surface
-                px-[15px]
-                py-[12px]
-                shadow-[0_15px_28px_rgba(15,61,69,0.17)]
-                max-[900px]:right-[15px]
-                max-[650px]:top-[15px]
-                max-[650px]:right-[12px]
-                max-[650px]:gap-[8px]
-                max-[650px]:px-[11px]
-                max-[650px]:py-[9px]
-              "
+            <h1
+              className={`
+                max-w-[760px]
+                text-[38px] font-black
+                leading-[1.1] tracking-[-1.5px]
+                transition-all
+                duration-[1500ms]
+                ease-[cubic-bezier(0.16,1,0.3,1)]
+                sm:text-[46px]
+                md:text-[54px]
+                lg:text-[64px]
+                ${
+                  isLoaded
+                    ? "translate-y-0 opacity-100"
+                    : "translate-y-12 opacity-0"
+                }
+              `}
+              style={{ transitionDelay: "750ms" }}
             >
-              <div
+              المحطة الجاية؟
+              <span
                 className="
-                  flex
-                  items-center
-                  justify-center
-                  w-[38px]
-                  h-[38px]
-                  rounded-full
-                  bg-soft-teal
-                  text-primary
-                  max-[650px]:w-[32px]
-                  max-[650px]:h-[32px]
+                  mt-2 block
+                  bg-gradient-to-l
+                  from-[#15ba9d] to-[#078a91]
+                  bg-clip-text text-transparent
                 "
               >
-                <CiLocationOn className="text-[22px]" />
+                .على كيفك
+              </span>
+            </h1>
+
+            <p
+              className={`
+                mt-7 max-w-[620px]
+                text-[14px] font-medium
+                leading-[2] text-white/80
+                transition-all duration-[1400ms] ease-out
+                sm:text-[16px]
+                ${
+                  isLoaded
+                    ? "translate-y-0 opacity-100"
+                    : "translate-y-8 opacity-0"
+                }
+              `}
+              style={{ transitionDelay: "1000ms" }}
+            >
+              من حلب لدمشق، ومن الساحل للجزيرة...
+              <br />
+              سيرنا بتخليك تلاقي رحلتك وتحجزها بسهولة، بسرعة، وبدون تعقيد.
+            </p>
+
+            <div
+              className={`
+                mt-7 grid max-w-[580px]
+                grid-cols-1 gap-3
+                transition-all duration-[1400ms]
+                sm:grid-cols-3
+                ${
+                  isLoaded
+                    ? "translate-y-0 opacity-100"
+                    : "translate-y-8 opacity-0"
+                }
+              `}
+              style={{ transitionDelay: "1200ms" }}
+            >
+              <div className="flex items-center gap-2 text-[12px] font-extrabold text-white/90">
+                <CiCircleCheck className="text-[20px] text-primary" />
+                <span>حجز سهل</span>
               </div>
 
-              <div className="flex flex-col">
-                <b
-                  className="
-                    text-[12px]
-                    font-black
-                    text-text
-                    max-[650px]:text-[10px]
-                  "
-                >
-                  14 محافظة
-                </b>
+              <div className="flex items-center gap-2 text-[12px] font-extrabold text-white/90">
+                <CiCircleCheck className="text-[20px] text-primary" />
+                <span>خيارات متعددة</span>
+              </div>
 
-                <small
-                  className="
-                    text-[10px]
-                    text-muted
-                    max-[650px]:text-[8px]
-                  "
-                >
-                  وجهات بتجمعنا
-                </small>
+              <div className="flex items-center gap-2 text-[12px] font-extrabold text-white/90">
+                <CiCircleCheck className="text-[20px] text-primary" />
+                <span>تجربة واضحة</span>
               </div>
             </div>
 
             <div
-              className="
-                absolute
-                z-[3]
-                bottom-[25px]
-                left-[-32px]
-                flex
-                items-center
-                gap-[10px]
-                rounded-[16px]
-                bg-surface
-                px-[15px]
-                py-[12px]
-                shadow-[0_15px_28px_rgba(15,61,69,0.17)]
-                max-[900px]:left-[15px]
-                max-[650px]:bottom-[15px]
-                max-[650px]:left-[12px]
-                max-[650px]:gap-[8px]
-                max-[650px]:px-[11px]
-                max-[650px]:py-[9px]
-              "
+              className={`
+                mt-8 flex items-center gap-4
+                transition-all duration-[1400ms]
+                ${
+                  isLoaded
+                    ? "translate-y-0 opacity-100"
+                    : "translate-y-8 opacity-0"
+                }
+              `}
+              style={{ transitionDelay: "1400ms" }}
             >
-              <span
+              <div className="flex -space-x-3 space-x-reverse">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-[#d9eee9] text-xs font-black text-dark">
+                  س
+                </div>
+
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-[#dce8ef] text-xs font-black text-dark">
+                  أ
+                </div>
+
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-[#f2e4d8] text-xs font-black text-dark">
+                  م
+                </div>
+
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-primary text-xs font-black text-white">
+                  +
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black">4.9/5</span>
+
+                  <div className="flex gap-1 text-primary">
+                    <FaRegCircleCheck />
+                    <FaRegCircleCheck />
+                    <FaRegCircleCheck />
+                  </div>
+                </div>
+
+                <p className="mt-1 text-[11px] font-semibold text-white/60">
+                  تجربة مستخدمين سيرنا
+                </p>
+              </div>
+            </div>
+
+            <div
+              className={`
+                mt-9 transition-all duration-[1500ms]
+                ${
+                  isLoaded
+                    ? "translate-y-0 opacity-100"
+                    : "translate-y-8 opacity-0"
+                }
+              `}
+              style={{ transitionDelay: "1600ms" }}
+            >
+              <button
+                type="button"
+                onClick={() => navigate("/results")}
                 className="
-                  flex
-                  items-center
-                  justify-center
-                  w-[38px]
-                  h-[38px]
-                  rounded-full
-                  bg-soft-teal
-                  text-primary
-                  max-[650px]:w-[32px]
-                  max-[650px]:h-[32px]
+                  inline-flex min-h-[52px]
+                  items-center justify-center
+                  rounded-xl bg-primary
+                  px-7 text-[13px]
+                  font-black text-white
+                  shadow-lg shadow-black/10
+                  transition-all duration-500
+                  hover:-translate-y-1
+                  hover:bg-primary-deep
+                  hover:shadow-xl
+                  active:translate-y-0
+                  active:scale-[0.98]
                 "
               >
-                <FaRegCircleCheck className="text-[20px]" />
-              </span>
+                احجز رحلتك
+              </button>
+            </div>
+          </div>
 
-              <div className="flex flex-col">
-                <b
-                  className="
-                    text-[12px]
-                    font-black
-                    text-text
-                    max-[650px]:text-[10px]
-                  "
-                >
-                  سافر براحة
-                </b>
+          <div className="order-2 flex justify-center lg:order-2">
+            <div
+              className={`
+                relative w-full max-w-[500px]
+                transition-all
+                duration-[1800ms]
+                ease-[cubic-bezier(0.16,1,0.3,1)]
+                ${
+                  isLoaded
+                    ? "translate-y-0 scale-100 opacity-100"
+                    : "translate-y-12 scale-[0.92] opacity-0"
+                }
+              `}
+              style={{ transitionDelay: "750ms" }}
+            >
+              <div
+                className="relative w-full overflow-visible"
+                style={{
+                  transform: `
+                    translate(
+                      ${mousePosition.x * 3}px,
+                      ${mousePosition.y * 3}px
+                    )
+                  `,
+                  transition: "transform 0.5s ease-out",
+                }}
+              >
+                <div className="relative overflow-hidden rounded-[28px] shadow-[0_25px_70px_rgba(19,54,72,0.25)]">
+                  <img
+                    src={masged}
+                    alt="رحلات سيرنا"
+                    className="
+                      block aspect-[1.55/1]
+                      h-full w-full
+                      object-cover
+                      transition-transform
+                      duration-[3200ms]
+                      ease-[cubic-bezier(0.16,1,0.3,1)]
+                    "
+                    style={{
+                      transform: `
+                        scale(${isLoaded ? 1.03 : 1.13})
+                        translate(
+                          ${mousePosition.x * -2}px,
+                          ${mousePosition.y * -2}px
+                        )
+                      `,
+                    }}
+                  />
 
-                <small
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+
+                  <div className="absolute bottom-4 right-4 rounded-xl bg-black/45 px-3 py-2 backdrop-blur-md">
+                    <p className="text-[9px] font-bold text-white/70">
+                      رحلتك تبدأ من هون
+                    </p>
+
+                    <p className="mt-0.5 text-[11px] font-black text-white">
+                      من حلب إلى دمشق
+                    </p>
+                  </div>
+                </div>
+
+                <div
                   className="
-                    text-[10px]
-                    text-muted
-                    max-[650px]:text-[8px]
+                    absolute -left-5 top-8 z-10
+                    flex items-center gap-2
+                    rounded-xl border border-white
+                    bg-white px-3 py-2.5
+                    shadow-[0_12px_30px_rgba(19,54,72,0.14)]
                   "
+                  style={{
+                    transform: `translateY(${floatingY}px)`,
+                  }}
                 >
-                  من أول حجز لآخر محطة
-                </small>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-soft-teal text-primary">
+                    <CiLocationOn className="text-[17px]" />
+                  </div>
+
+                  <div>
+                    <p className="text-[8px] font-bold text-muted">
+                      14 محافظة
+                    </p>
+
+                    <p className="mt-0.5 text-[8px] font-extrabold text-text">
+                      وجهتك علينا
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  className="
+                    absolute -right-5 bottom-14 z-10
+                    flex items-center gap-2
+                    rounded-xl border border-white
+                    bg-white px-3 py-2.5
+                    shadow-[0_12px_30px_rgba(19,54,72,0.14)]
+                  "
+                  style={{
+                    transform: `translateY(${-floatingY}px)`,
+                  }}
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-soft-teal text-primary">
+                    <CiCircleCheck className="text-xl" />
+                  </div>
+
+                  <div>
+                    <p className="text-[8px] font-bold text-muted">
+                      الوجهة
+                    </p>
+
+                    <p className="mt-1 text-[11px] font-black text-text">
+                      دمشق
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      <div
+        className={`
+          pointer-events-none
+          absolute bottom-6 left-1/2 z-20
+          -translate-x-1/2
+          transition-all duration-[1800ms]
+          ${
+            isLoaded
+              ? "translate-y-0 opacity-100"
+              : "translate-y-5 opacity-0"
+          }
+        `}
+        style={{ transitionDelay: "2000ms" }}
+      >
+        <div className="flex flex-col items-center gap-2 text-white/60">
+          <span className="text-[9px] font-bold">اكتشف رحلتك</span>
+
+          <div className="h-8 w-[1px] animate-pulse bg-white/40" />
+        </div>
+      </div>
     </section>
-  )
+  );
 }
 
-export default Hero
+export default Hero;

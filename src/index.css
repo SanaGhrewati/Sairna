@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 :root {
   color-scheme: light;
@@ -127,4 +128,30 @@ h3,
 h4,
 p {
   margin-top: 0;
+}
+
+
+@theme {
+  --animate-heroFloat: heroFloat 7s ease-in-out infinite;
+
+  @keyframes heroFloat {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-7px);
+    }
+  }
+}
+
+@keyframes floatSlow {
+  0%,100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-7px);
+  }
 }

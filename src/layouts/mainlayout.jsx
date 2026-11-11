@@ -1,16 +1,15 @@
-import { Outlet } from "react-router-dom"
 import Header from "../components/header/header"
 import Footer from "../components/footer/footer"
-
+import ScrollToTop from "../components/scroll-to-top/scroll-to-top"
+import { Outlet } from "react-router-dom"
 
 function MainLayout() {
   return (
     <>
-    <Header/>
-    <main>
-        <Outlet/>
-    </main>
-    <Footer/>
+      <ScrollToTop />
+      <Header />
+      <Outlet />
+      <Footer />
     </>
   )
 }
