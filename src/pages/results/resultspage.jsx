@@ -1,18 +1,17 @@
-import { useMemo, useState } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  FiArrowLeft,
-  FiClock,
-  FiFilter,
   FiMapPin,
-  FiRefreshCw,
-  FiTruck,
+  FiRepeat,
+  FiCalendar,
   FiUsers,
-  FiChevronDown,
-  FiCheck,
+  FiSearch,
+  FiClock,
+  FiArrowLeft,
 } from "react-icons/fi"
 import { BsStars } from "react-icons/bs"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { useGetTrips } from "../../hooks/use-trips"
+import { useGetCities } from "../../hooks/use-cities"
 
 function ResultsPage() {
   const [searchParams] = useSearchParams()
@@ -23,16 +22,36 @@ function ResultsPage() {
   const date = searchParams.get("date")
   const people = searchParams.get("people") || "1"
 
+  const { data: citiesData, isLoading: citiesLoading } = useGetCities()
+
+  const [origin, setOrigin] = useState(originId || "2")
+  const [destination, setDestination] = useState(destinationId || "1")
+  const [searchDate, setSearchDate] = useState(date || "")
+  const [searchPeople, setSearchPeople] = useState(people)
+  const [isSwapped, setIsSwapped] = useState(false)
+
   const [companyFilter, setCompanyFilter] = useState("all")
   const [timeFilter, setTimeFilter] = useState("all")
-  const [sort, setSort] = useState("earliest")
-  const [showFilters, setShowFilters] = useState(false)
+  const [sort, setSort] = useState("departure")
 
-  const filters = {
-    originId: originId ? Number(originId) : undefined,
-    destinationId: destinationId ? Number(destinationId) : undefined,
-    date: date || undefined,
-  }
+  const [heroVisible, setHeroVisible] = useState(false)
+  const [searchVisible, setSearchVisible] = useState(false)
+  const [resultsVisible, setResultsVisible] = useState(false)
+
+  const heroRef = useRef(null)
+  const searchRef = useRef(null)
+  const resultsRef = useRef(null)
+
+  const cities = Array.isArray(citiesData) ? citiesData : []
+
+  const filters = useMemo(
+    () => ({
+      originId: originId ? Number(originId) : undefined,
+      destinationId: destinationId ? Number(destinationId) : undefined,
+      date: date || undefined,
+    }),
+    [originId, destinationId, date]
+  )
 
   const {
     data: tripsData,
@@ -44,16 +63,55 @@ function ResultsPage() {
     ? tripsData
     : tripsData?.items || []
 
+  useEffect(() => {
+    setOrigin(originId || "2")
+    setDestination(destinationId || "1")
+    setSearchDate(date || "")
+    setSearchPeople(people)
+  }, [originId, destinationId, date, people])
+
+  useEffect(() => {
+    const observers = []
+
+    const observe = (element, setter, threshold = 0.15) => {
+      if (!element) return
+
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setter(true)
+            observer.disconnect()
+          }
+        },
+        {
+          threshold,
+          rootMargin: "0px 0px -50px 0px",
+        }
+      )
+
+      observer.observe(element)
+      observers.push(observer)
+    }
+
+    observe(heroRef.current, setHeroVisible)
+    observe(searchRef.current, setSearchVisible)
+    observe(resultsRef.current, setResultsVisible)
+
+    return () => {
+      observers.forEach((observer) => observer.disconnect())
+    }
+  }, [])
+
   const companies = useMemo(() => {
-    const uniqueCompanies = new Map()
+    const map = new Map()
 
     trips.forEach((trip) => {
-      if (trip.company?.id) {
-        uniqueCompanies.set(trip.company.id, trip.company)
+      if (trip.company) {
+        map.set(trip.company.id, trip.company)
       }
     })
 
-    return Array.from(uniqueCompanies.values())
+    return Array.from(map.values())
   }, [trips])
 
   const filteredTrips = useMemo(() => {
@@ -67,12 +125,10 @@ function ResultsPage() {
 
     if (timeFilter !== "all") {
       result = result.filter((trip) => {
-        if (!trip.departureAt) return false
-
-        const hour = Number(trip.departureAt.slice(11, 13))
+        const hour = new Date(trip.departureAt).getHours()
 
         if (timeFilter === "morning") {
-          return hour < 12
+          return hour >= 5 && hour < 12
         }
 
         if (timeFilter === "afternoon") {
@@ -80,790 +136,873 @@ function ResultsPage() {
         }
 
         if (timeFilter === "evening") {
-          return hour >= 17
+          return hour >= 17 && hour < 22
+        }
+
+        if (timeFilter === "night") {
+          return hour >= 22 || hour < 5
         }
 
         return true
       })
     }
 
-    result.sort((a, b) => {
-      if (sort === "cheap") {
-        return Number(a.price) - Number(b.price)
-      }
+    if (sort === "price") {
+      result.sort(
+        (a, b) => Number(a.price || 0) - Number(b.price || 0)
+      )
+    }
 
-      if (sort === "quick") {
+    if (sort === "duration") {
+      result.sort((a, b) => {
         const durationA =
-          new Date(a.arrivalAt).getTime() -
-          new Date(a.departureAt).getTime()
+          new Date(a.arrivalAt) - new Date(a.departureAt)
 
         const durationB =
-          new Date(b.arrivalAt).getTime() -
-          new Date(b.departureAt).getTime()
+          new Date(b.arrivalAt) - new Date(b.departureAt)
 
         return durationA - durationB
-      }
+      })
+    }
 
-      return (
-        new Date(a.departureAt).getTime() -
-        new Date(b.departureAt).getTime()
+    if (sort === "departure") {
+      result.sort(
+        (a, b) =>
+          new Date(a.departureAt) - new Date(b.departureAt)
       )
-    })
+    }
 
     return result
   }, [trips, companyFilter, timeFilter, sort])
 
-  const originName =
-    trips[0]?.origin?.name ||
-    getCityName(originId)
+  const findCityName = (id) => {
+    const city = cities.find(
+      (item) => String(item.id) === String(id)
+    )
 
-  const destinationName =
-    trips[0]?.destination?.name ||
-    getCityName(destinationId)
-
-  const formatPrice = (price) => {
-    return Number(price || 0).toLocaleString("ar-SY")
+    return city?.name || "—"
   }
 
-  const formatTime = (dateTime) => {
-    if (!dateTime) return "--:--"
+  const originName =
+    trips[0]?.origin?.name || findCityName(originId)
 
-    const date = new Date(dateTime)
+  const destinationName =
+    trips[0]?.destination?.name || findCityName(destinationId)
 
-    return date.toLocaleTimeString("ar-SY", {
+  const formatPrice = (price) => {
+    return `${Number(price || 0).toLocaleString("ar-SY")} ل.س`
+  }
+
+  const formatTime = (value) => {
+    if (!value) return "—"
+
+    return new Date(value).toLocaleTimeString("ar-SY", {
       hour: "2-digit",
       minute: "2-digit",
-      hour12: false,
     })
   }
 
   const formatDate = (value) => {
     if (!value) return "—"
 
-    const date = new Date(`${value}T00:00:00`)
-
-    return date.toLocaleDateString("ar-SY", {
+    return new Date(value).toLocaleDateString("ar-SY", {
       weekday: "long",
       day: "numeric",
       month: "long",
     })
   }
 
-  const getDuration = (departure, arrival) => {
+  const formatDuration = (departure, arrival) => {
     if (!departure || !arrival) return "—"
 
     const minutes = Math.round(
-      (new Date(arrival).getTime() -
-        new Date(departure).getTime()) /
-        60000
+      (new Date(arrival) - new Date(departure)) / 60000
     )
 
-    if (minutes <= 0) return "—"
-
     const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
+    const remainingMinutes = minutes % 60
 
     if (hours === 0) {
-      return `${mins} دقيقة`
+      return `${remainingMinutes} دقيقة`
     }
 
-    if (mins === 0) {
-      return `${hours} ساعات`
+    return `${hours} س ${remainingMinutes} د`
+  }
+
+  const swapCities = () => {
+    setOrigin(destination)
+    setDestination(origin)
+    setIsSwapped((current) => !current)
+  }
+
+  const handleSearch = (event) => {
+    event.preventDefault()
+
+    if (origin === destination) {
+      alert("اختاري محافظتين مختلفتين")
+      return
     }
 
-    return `${hours}س ${mins}د`
+    if (!searchDate) {
+      alert("اختاري تاريخ الرحلة")
+      return
+    }
+
+    const params = new URLSearchParams()
+
+    params.set("originId", origin)
+    params.set("destinationId", destination)
+    params.set("date", searchDate)
+    params.set("people", searchPeople)
+
+    navigate(`/results?${params.toString()}`)
   }
 
-  const resetFilters = () => {
-    setCompanyFilter("all")
-    setTimeFilter("all")
-    setSort("earliest")
+  const scrollToSearch = () => {
+    searchRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    })
   }
 
-  const handleBooking = (trip) => {
-    navigate(`/booking/${trip.id}?people=${people}`)
-  }
+  const fieldClass =
+    "h-[50px] w-full rounded-[14px] border border-border bg-bg pr-10 pl-3 text-[12px] font-bold text-text outline-none transition-all duration-300 hover:border-primary/50 focus:border-primary focus:bg-surface focus:ring-4 focus:ring-primary/10 max-[650px]:h-11 max-[650px]:rounded-xl max-[650px]:pr-9"
+
+  const iconClass =
+    "absolute right-3 top-1/2 z-10 -translate-y-1/2 text-primary transition-transform duration-300"
 
   return (
-    <main dir="rtl" className="min-h-screen bg-bg">
-      <section className="relative overflow-hidden bg-surface-alt">
-        <div className="mx-auto w-full max-w-[1216px] px-5 pb-10 pt-7 md:px-7 lg:pb-12">
-          <div className="mb-7 flex items-center gap-2 text-[11px] font-bold text-muted">
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="transition-colors hover:text-primary"
-            >
-              الرئيسية
-            </button>
+    <main
+      dir="rtl"
+      className="min-h-screen overflow-hidden bg-bg"
+    >
+      <section
+        ref={heroRef}
+        className="relative overflow-hidden px-5 pb-12 pt-14 sm:px-7 sm:pb-16 sm:pt-16 lg:pb-20 lg:pt-20"
+      >
+        <div className="pointer-events-none absolute -right-40 -top-40 h-96 w-96 rounded-full bg-primary/8 blur-3xl" />
 
-            <FiArrowLeft size={13} />
+        <div className="pointer-events-none absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-soft-teal/60 blur-3xl" />
 
-            <span>نتائج البحث</span>
+        <div
+          className="relative mx-auto max-w-[1216px]"
+          style={{
+            opacity: heroVisible ? 1 : 0,
+            transform: heroVisible
+              ? "translateY(0)"
+              : "translateY(35px)",
+            transition:
+              "opacity 1000ms ease, transform 1100ms cubic-bezier(0.16,1,0.3,1)",
+          }}
+        >
+          <div
+            className="mb-5 flex items-center gap-2 text-[11px] font-bold text-muted"
+            style={{
+              opacity: heroVisible ? 1 : 0,
+              transform: heroVisible
+                ? "translateY(0)"
+                : "translateY(-15px)",
+              transition: "all 700ms ease 100ms",
+            }}
+          >
+            <span>الرئيسية</span>
+
+            <FiArrowLeft className="text-primary" />
+
+            <span className="text-primary">
+              نتائج الرحلات
+            </span>
           </div>
 
-          <div className="flex items-center justify-between gap-8">
-            <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-soft-teal px-3 py-1.5 text-[10px] font-extrabold text-primary">
-                <BsStars size={13} />
-                <span>لنكمل الطريق</span>
-              </div>
+          <div className="max-w-[760px]">
+            <div
+              className="mb-5 inline-flex items-center gap-2 rounded-full bg-soft-teal px-4 py-2 text-[10px] font-extrabold text-primary"
+              style={{
+                opacity: heroVisible ? 1 : 0,
+                transform: heroVisible
+                  ? "translateY(0) scale(1)"
+                  : "translateY(15px) scale(.95)",
+                transition: "all 800ms ease 200ms",
+              }}
+            >
+              <BsStars />
 
-              <h1 className="m-0 text-[32px] font-black leading-[1.3] tracking-[-1px] text-text sm:text-[40px] lg:text-[48px]">
-                اختار الرحلة{" "}
-                <span className="bg-gradient-to-l from-primary-deep to-primary bg-clip-text text-transparent">
-                  اللي بتشبهك.
-                </span>
-              </h1>
-
-              <p className="mt-3 max-w-[570px] text-[13px] leading-7 text-muted sm:text-[14px]">
-                قارن بين الشركات والأوقات، واحجز مقعدك بكل سهولة.
-              </p>
+              <span>
+                لقينا لك الرحلات المناسبة
+              </span>
             </div>
 
-            <div className="hidden h-[105px] w-[105px] shrink-0 items-center justify-center rounded-[30px] bg-dark text-white shadow-custom-md lg:flex">
-              <FiTruck size={58} strokeWidth={1.5} />
-            </div>
+            <h1
+              className="mb-4 text-[42px] font-black leading-[1.15] tracking-[-1.5px] text-text sm:text-[52px] lg:text-[64px]"
+              style={{
+                opacity: heroVisible ? 1 : 0,
+                transform: heroVisible
+                  ? "translateY(0) scale(1)"
+                  : "translateY(25px) scale(.97)",
+                transition:
+                  "all 1000ms cubic-bezier(0.16,1,0.3,1) 350ms",
+              }}
+            >
+              رحلتك من{" "}
+              <span className="bg-gradient-to-l from-[#078a91] to-[#15ba9d] bg-clip-text text-transparent">
+                {originName}
+              </span>{" "}
+              إلى{" "}
+              <span className="bg-gradient-to-l from-[#078a91] to-[#15ba9d] bg-clip-text text-transparent">
+                {destinationName}
+              </span>
+            </h1>
+
+            <p
+              className="max-w-[650px] text-[14px] font-medium leading-[2] text-muted sm:text-[16px]"
+              style={{
+                opacity: heroVisible ? 1 : 0,
+                transform: heroVisible
+                  ? "translateY(0)"
+                  : "translateY(20px)",
+                transition: "all 900ms ease 500ms",
+              }}
+            >
+              اختاري الرحلة اللي بتناسب وقتك وسعرك،
+              وخلي سيرنا يهتم بالباقي.
+            </p>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-[1216px] px-5 pb-16 md:px-7">
-        <div className="relative z-10 -mt-5 rounded-[18px] border border-border bg-surface p-4 shadow-custom md:p-5">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <span className="text-[10px] font-extrabold text-primary">
-                رحلة البحث
+      <section
+        ref={searchRef}
+        className="relative z-20 mx-auto -mt-6 w-full max-w-[1120px] px-5 sm:px-7"
+      >
+        <div
+          className="relative overflow-hidden rounded-[24px] border border-border bg-surface shadow-[0_25px_70px_rgba(19,54,72,0.12)]"
+          style={{
+            opacity: searchVisible ? 1 : 0,
+            transform: searchVisible
+              ? "translateY(0) scale(1)"
+              : "translateY(35px) scale(.97)",
+            transition:
+              "opacity 1200ms ease, transform 1400ms cubic-bezier(0.16,1,0.3,1)",
+          }}
+        >
+          <div className="pointer-events-none absolute -right-28 -top-28 h-64 w-64 rounded-full bg-primary/8 blur-3xl" />
+
+          <div className="pointer-events-none absolute -bottom-28 -left-28 h-64 w-64 rounded-full bg-soft-teal/60 blur-3xl" />
+
+          <div className="relative flex items-center justify-between gap-5 border-b border-border px-6 py-5 max-[850px]:flex-col max-[850px]:items-start max-[650px]:px-4 max-[650px]:py-4">
+            <div
+              className="flex items-center gap-3"
+              style={{
+                opacity: searchVisible ? 1 : 0,
+                transform: searchVisible
+                  ? "translateY(0)"
+                  : "translateY(18px)",
+                transition: "all 800ms ease 300ms",
+              }}
+            >
+              <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-[13px] bg-soft-teal text-primary">
+                <span className="absolute inset-0 rounded-[13px] bg-primary/10" />
+
+                <FiMapPin className="relative text-lg" />
               </span>
 
-              <h2 className="mt-1 text-[14px] font-black text-text">
-                {originName} ← {destinationName}
+              <div className="flex flex-col gap-1">
+                <strong className="text-[13px] font-black text-text sm:text-sm">
+                  عدّل بحثك
+                </strong>
+
+                <span className="text-[10px] font-medium text-muted sm:text-[11px]">
+                  غيّر الوجهة أو التاريخ وشوف الرحلات الجديدة
+                </span>
+              </div>
+            </div>
+
+            <div
+              className="flex items-center gap-2 rounded-full bg-soft-teal px-4 py-2 text-[10px] font-extrabold text-primary"
+              style={{
+                opacity: searchVisible ? 1 : 0,
+                transform: searchVisible
+                  ? "translateY(0)"
+                  : "translateY(15px)",
+                transition: "all 800ms ease 450ms",
+              }}
+            >
+              <BsStars />
+
+              <span>
+                بحث سريع وواضح
+              </span>
+            </div>
+          </div>
+
+          <form
+            onSubmit={handleSearch}
+            className="relative grid grid-cols-[1fr_auto_1fr_1fr_0.8fr_auto] items-end gap-3 p-5 max-[950px]:grid-cols-2 max-[950px]:gap-4 max-[650px]:gap-3 max-[650px]:p-4"
+          >
+            <div className="contents max-[950px]:flex max-[950px]:items-end max-[950px]:gap-2 max-[650px]:gap-1">
+              <label
+                className="flex min-w-0 flex-1 flex-col gap-2"
+                style={{
+                  opacity: searchVisible ? 1 : 0,
+                  transform: searchVisible
+                    ? "translateY(0)"
+                    : "translateY(18px)",
+                  transition: "all 800ms ease 550ms",
+                }}
+              >
+                <span className="text-[10px] font-extrabold text-muted sm:text-[11px]">
+                  من وين؟
+                </span>
+
+                <div className="group relative">
+                  <FiMapPin
+                    className={`${iconClass} group-hover:scale-110`}
+                  />
+
+                  <select
+                    value={origin}
+                    onChange={(e) =>
+                      setOrigin(e.target.value)
+                    }
+                    disabled={citiesLoading}
+                    className={fieldClass}
+                  >
+                    {cities.map((city) => (
+                      <option
+                        key={city.id}
+                        value={city.id}
+                      >
+                        {city.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </label>
+
+              <button
+                type="button"
+                onClick={swapCities}
+                aria-label="تبديل المحافظات"
+                className="mb-1 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-soft-teal text-primary shadow-sm transition-all duration-500 hover:scale-110 hover:bg-primary hover:text-white max-[650px]:h-8 max-[650px]:w-8"
+                style={{
+                  opacity: searchVisible ? 1 : 0,
+                  transform: searchVisible
+                    ? "translateY(0)"
+                    : "translateY(18px)",
+                  transition:
+                    "opacity 800ms ease 650ms, transform 800ms cubic-bezier(0.16,1,0.3,1) 650ms",
+                }}
+              >
+                <FiRepeat
+                  className={`text-[15px] transition-transform duration-700 ${
+                    isSwapped
+                      ? "rotate-180"
+                      : "rotate-0"
+                  }`}
+                />
+              </button>
+
+              <label
+                className="flex min-w-0 flex-1 flex-col gap-2"
+                style={{
+                  opacity: searchVisible ? 1 : 0,
+                  transform: searchVisible
+                    ? "translateY(0)"
+                    : "translateY(18px)",
+                  transition: "all 800ms ease 700ms",
+                }}
+              >
+                <span className="text-[10px] font-extrabold text-muted sm:text-[11px]">
+                  لوين؟
+                </span>
+
+                <div className="group relative">
+                  <FiMapPin
+                    className={`${iconClass} group-hover:scale-110`}
+                  />
+
+                  <select
+                    value={destination}
+                    onChange={(e) =>
+                      setDestination(e.target.value)
+                    }
+                    disabled={citiesLoading}
+                    className={fieldClass}
+                  >
+                    {cities.map((city) => (
+                      <option
+                        key={city.id}
+                        value={city.id}
+                      >
+                        {city.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </label>
+            </div>
+
+            <label
+              className="flex min-w-0 flex-col gap-2"
+              style={{
+                opacity: searchVisible ? 1 : 0,
+                transform: searchVisible
+                  ? "translateY(0)"
+                  : "translateY(18px)",
+                transition: "all 800ms ease 800ms",
+              }}
+            >
+              <span className="text-[10px] font-extrabold text-muted sm:text-[11px]">
+                تاريخ الرحلة
+              </span>
+
+              <div className="group relative">
+                <FiCalendar
+                  className={`${iconClass} group-hover:scale-110`}
+                />
+
+                <input
+                  type="date"
+                  value={searchDate}
+                  onChange={(e) =>
+                    setSearchDate(e.target.value)
+                  }
+                  className={fieldClass}
+                />
+              </div>
+            </label>
+
+            <label
+              className="flex min-w-0 flex-col gap-2"
+              style={{
+                opacity: searchVisible ? 1 : 0,
+                transform: searchVisible
+                  ? "translateY(0)"
+                  : "translateY(18px)",
+                transition: "all 800ms ease 900ms",
+              }}
+            >
+              <span className="text-[10px] font-extrabold text-muted sm:text-[11px]">
+                المسافرين
+              </span>
+
+              <div className="group relative">
+                <FiUsers
+                  className={`${iconClass} group-hover:scale-110`}
+                />
+
+                <select
+                  value={searchPeople}
+                  onChange={(e) =>
+                    setSearchPeople(e.target.value)
+                  }
+                  className={fieldClass}
+                >
+                  <option value="1">
+                    1 مسافر
+                  </option>
+
+                  <option value="2">
+                    2 مسافرين
+                  </option>
+
+                  <option value="3">
+                    3 مسافرين
+                  </option>
+
+                  <option value="4">
+                    4 مسافرين
+                  </option>
+                </select>
+              </div>
+            </label>
+
+            <button
+              type="submit"
+              className="group flex h-[50px] items-center justify-center gap-2 whitespace-nowrap rounded-[14px] bg-primary px-5 text-[11px] font-extrabold text-white shadow-[0_10px_25px_rgba(10,169,155,0.18)] transition-all duration-500 hover:-translate-y-1 hover:bg-primary-deep hover:shadow-[0_15px_30px_rgba(10,169,155,0.25)] active:translate-y-0 active:scale-[0.98] max-[950px]:col-span-2 max-[950px]:w-full max-[650px]:h-11 max-[650px]:rounded-xl"
+              style={{
+                opacity: searchVisible ? 1 : 0,
+                transform: searchVisible
+                  ? "translateY(0)"
+                  : "translateY(18px)",
+                transition:
+                  "opacity 800ms ease 1050ms, transform 800ms cubic-bezier(0.16,1,0.3,1) 1050ms",
+              }}
+            >
+              <FiSearch className="text-[15px] transition-transform duration-500 group-hover:scale-110" />
+
+              <span>
+                ابحث عن رحلات
+              </span>
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section
+        ref={resultsRef}
+        className="mx-auto w-full max-w-[1216px] px-5 pb-20 pt-14 sm:px-7 lg:pt-16"
+      >
+        <div
+          style={{
+            opacity: resultsVisible ? 1 : 0,
+            transform: resultsVisible
+              ? "translateY(0)"
+              : "translateY(30px)",
+            transition:
+              "opacity 900ms ease, transform 1000ms cubic-bezier(0.16,1,0.3,1)",
+          }}
+        >
+          <div className="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-primary" />
+
+                <span className="text-[11px] font-extrabold text-primary">
+                  الرحلات المتاحة
+                </span>
+              </div>
+
+              <h2 className="text-[28px] font-black text-text sm:text-[34px]">
+                اختاري الرحلة اللي بتناسبك
               </h2>
+
+              <p className="mt-2 text-[12px] font-medium text-muted sm:text-[13px]">
+                {date
+                  ? formatDate(date)
+                  : "اختاري تاريخ الرحلة"}
+              </p>
             </div>
 
             <button
               type="button"
-              onClick={() => navigate("/")}
-              className="rounded-[10px] border border-border bg-surface-alt px-3 py-2 text-[10px] font-extrabold text-text transition-all hover:border-primary hover:text-primary"
+              onClick={scrollToSearch}
+              className="flex w-fit items-center gap-2 rounded-[13px] border border-border bg-surface px-4 py-3 text-[11px] font-extrabold text-text shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:text-primary"
             >
+              <FiSearch />
+
               تعديل البحث
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
-            <SearchSummary
-              label="من"
-              value={originName}
-              icon={<FiMapPin size={15} />}
-            />
-
-            <SearchSummary
-              label="إلى"
-              value={destinationName}
-              icon={<FiMapPin size={15} />}
-            />
-
-            <SearchSummary
-              label="تاريخ الرحلة"
-              value={formatDate(date)}
-              icon={<FiClock size={15} />}
-            />
-
-            <SearchSummary
-              label="المسافرون"
-              value={`${people} ${Number(people) === 1 ? "مسافر" : "مسافرين"}`}
-              icon={<FiUsers size={15} />}
-            />
-          </div>
-        </div>
-
-        <section className="mt-8">
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-soft-teal text-[13px] font-black text-primary">
-                01
-              </span>
-
-              <div>
-                <h2 className="m-0 text-[15px] font-black text-text">
-                  اختار شركة النقل
-                </h2>
-
-                <p className="mt-1 text-[11px] text-muted">
-                  حدد الشركة اللي بتفضّلها، ومنعرضلك مواعيدها المتاحة.
-                </p>
-              </div>
-            </div>
-
-            <div className="hidden items-center gap-2 text-[11px] font-extrabold text-muted md:flex">
-              02
-              <FiArrowLeft size={14} />
-              اختار الوقت والمقعد
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5 lg:gap-2.5">
-            <CompanyButton
-              active={companyFilter === "all"}
-              onClick={() => setCompanyFilter("all")}
-              icon={<FiTruck size={22} />}
-              name="كل الشركات"
-              description="قارن الخيارات"
-            />
-
-            {companies.map((company) => (
-              <CompanyButton
-                key={company.id}
-                active={String(companyFilter) === String(company.id)}
-                onClick={() => setCompanyFilter(company.id)}
-                name={company.name}
-                description="رحلات متاحة"
-                logo={company.logoUrl}
-              />
-            ))}
-          </div>
-        </section>
-
-        <section className="mt-9">
-          <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <div className="mb-2 flex items-center gap-2 text-[10px] font-extrabold text-primary">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                الرحلات المتاحة
-              </div>
-
-              <h2 className="m-0 text-[24px] font-black tracking-[-0.6px] text-text sm:text-[29px]">
-                اختار الوقت والمقعد
-              </h2>
-
-              <p className="mt-2 text-[11px] leading-6 text-muted">
-                {filteredTrips.length > 0
-                  ? `لقينا لك ${filteredTrips.length} رحلة مناسبة لبحثك.`
-                  : "ما لقينا رحلات مطابقة للخيارات الحالية."}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
+          {companies.length > 0 && (
+            <div className="mb-6 flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => setShowFilters((value) => !value)}
-                className="inline-flex min-h-10 items-center gap-2 rounded-[11px] border border-border bg-surface px-3.5 text-[11px] font-extrabold text-text transition-all hover:border-primary hover:text-primary lg:hidden"
+                onClick={() =>
+                  setCompanyFilter("all")
+                }
+                className={`rounded-full px-4 py-2 text-[10px] font-extrabold transition-all duration-300 ${
+                  companyFilter === "all"
+                    ? "bg-primary text-white shadow-[0_8px_20px_rgba(10,169,155,0.18)]"
+                    : "bg-surface text-muted hover:bg-soft-teal hover:text-primary"
+                }`}
               >
-                <FiFilter size={15} />
-                الفلاتر
+                كل الشركات
               </button>
 
-              <div className="relative">
-                <select
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value)}
-                  className="min-h-10 appearance-none rounded-[11px] border border-border bg-surface px-4 pe-9 text-[11px] font-extrabold text-text outline-none transition-all focus:border-primary"
-                >
-                  <option value="earliest">الأبكر أولاً</option>
-                  <option value="cheap">الأقل سعراً</option>
-                  <option value="quick">الأسرع</option>
-                </select>
-
-                <FiChevronDown
-                  size={14}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-            <aside
-              className={`
-                ${showFilters ? "block" : "hidden"}
-                rounded-[18px] border border-border bg-surface p-4
-                lg:block
-              `}
-            >
-              <div className="mb-5 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FiFilter size={16} className="text-primary" />
-
-                  <h3 className="m-0 text-[13px] font-black text-text">
-                    تصفية النتائج
-                  </h3>
-                </div>
-
+              {companies.map((company) => (
                 <button
+                  key={company.id}
                   type="button"
-                  onClick={resetFilters}
-                  className="inline-flex items-center gap-1 text-[10px] font-extrabold text-primary"
+                  onClick={() =>
+                    setCompanyFilter(
+                      String(company.id)
+                    )
+                  }
+                  className={`rounded-full px-4 py-2 text-[10px] font-extrabold transition-all duration-300 ${
+                    String(companyFilter) ===
+                    String(company.id)
+                      ? "bg-primary text-white shadow-[0_8px_20px_rgba(10,169,155,0.18)]"
+                      : "bg-surface text-muted hover:bg-soft-teal hover:text-primary"
+                  }`}
                 >
-                  <FiRefreshCw size={12} />
-                  إعادة
+                  {company.name}
                 </button>
-              </div>
-
-              <FilterGroup title="وقت الانطلاق">
-                <FilterOption
-                  active={timeFilter === "all"}
-                  label="كل الأوقات"
-                  onClick={() => setTimeFilter("all")}
-                />
-
-                <FilterOption
-                  active={timeFilter === "morning"}
-                  label="الصباح — قبل 12"
-                  onClick={() => setTimeFilter("morning")}
-                />
-
-                <FilterOption
-                  active={timeFilter === "afternoon"}
-                  label="بعد الظهر — 12 إلى 17"
-                  onClick={() => setTimeFilter("afternoon")}
-                />
-
-                <FilterOption
-                  active={timeFilter === "evening"}
-                  label="المساء — بعد 17"
-                  onClick={() => setTimeFilter("evening")}
-                />
-              </FilterGroup>
-
-              <FilterGroup title="شركة النقل">
-                <FilterOption
-                  active={companyFilter === "all"}
-                  label="كل الشركات"
-                  onClick={() => setCompanyFilter("all")}
-                />
-
-                {companies.map((company) => (
-                  <FilterOption
-                    key={company.id}
-                    active={
-                      String(companyFilter) === String(company.id)
-                    }
-                    label={company.name}
-                    onClick={() => setCompanyFilter(company.id)}
-                  />
-                ))}
-              </FilterGroup>
-            </aside>
-
-            <div className="min-w-0">
-              {isLoading && (
-                <div className="space-y-3">
-                  {[1, 2, 3].map((item) => (
-                    <TripSkeleton key={item} />
-                  ))}
-                </div>
-              )}
-
-              {isError && !isLoading && (
-                <div className="rounded-[18px] border border-border bg-surface px-5 py-12 text-center shadow-custom">
-                  <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-soft-teal text-primary">
-                    <FiRefreshCw size={22} />
-                  </div>
-
-                  <h3 className="m-0 text-[15px] font-black text-text">
-                    صار في مشكلة بجلب الرحلات
-                  </h3>
-
-                  <p className="mx-auto mt-2 max-w-[420px] text-[11px] leading-6 text-muted">
-                    تأكدي من الاتصال بالإنترنت وحاولي مرة ثانية.
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={() => window.location.reload()}
-                    className="mt-5 rounded-xl bg-primary px-5 py-3 text-[11px] font-extrabold text-white transition-all hover:bg-primary-deep"
-                  >
-                    إعادة المحاولة
-                  </button>
-                </div>
-              )}
-
-              {!isLoading &&
-                !isError &&
-                filteredTrips.length === 0 && (
-                  <div className="rounded-[18px] border border-border bg-surface px-5 py-14 text-center shadow-custom">
-                    <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-soft-teal text-primary">
-                      <FiTruck size={25} />
-                    </div>
-
-                    <h3 className="m-0 text-[16px] font-black text-text">
-                      ما في رحلات مطابقة
-                    </h3>
-
-                    <p className="mx-auto mt-2 max-w-[420px] text-[11px] leading-6 text-muted">
-                      جربي تغيير وقت الرحلة أو شركة النقل حتى نعرضلك
-                      خيارات أكثر.
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={resetFilters}
-                      className="mt-5 inline-flex items-center gap-2 rounded-xl border border-border bg-surface-alt px-5 py-3 text-[11px] font-extrabold text-text transition-all hover:border-primary hover:text-primary"
-                    >
-                      <FiRefreshCw size={13} />
-                      مسح الفلاتر
-                    </button>
-                  </div>
-                )}
-
-              {!isLoading &&
-                !isError &&
-                filteredTrips.length > 0 && (
-                  <div className="space-y-3.5">
-                    {filteredTrips.map((trip) => (
-                      <TripCard
-                        key={trip.id}
-                        trip={trip}
-                        onBooking={() => handleBooking(trip)}
-                        formatPrice={formatPrice}
-                        formatTime={formatTime}
-                        getDuration={getDuration}
-                      />
-                    ))}
-                  </div>
-                )}
+              ))}
             </div>
-          </div>
-        </section>
-      </section>
-    </main>
-  )
-}
+          )}
 
-function SearchSummary({ label, value, icon }) {
-  return (
-    <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-border bg-surface-alt px-3 py-2.5">
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-soft-teal text-primary">
-        {icon}
-      </span>
-
-      <div className="min-w-0">
-        <span className="block text-[9px] font-bold text-muted">
-          {label}
-        </span>
-
-        <strong className="mt-0.5 block truncate text-[11px] font-black text-text">
-          {value}
-        </strong>
-      </div>
-    </div>
-  )
-}
-
-function CompanyButton({
-  active,
-  onClick,
-  icon,
-  name,
-  description,
-  logo,
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`
-        flex min-w-0 flex-col items-center justify-center
-        gap-1.5 rounded-[13px] border px-2 py-3.5
-        text-center transition-all duration-200
-        hover:-translate-y-0.5 hover:border-primary
-        ${
-          active
-            ? "border-primary bg-soft-teal shadow-[0_0_0_2px_rgba(16,177,155,0.08)]"
-            : "border-border bg-surface"
-        }
-      `}
-    >
-      <span
-        className={`
-          grid h-9 w-9 place-items-center overflow-hidden rounded-xl
-          ${
-            active
-              ? "bg-primary text-white"
-              : "bg-surface-alt text-primary"
-          }
-        `}
-      >
-        {logo ? (
-          <img
-            src={logo}
-            alt=""
-            className="h-full w-full object-contain p-1.5"
-          />
-        ) : (
-          icon || <FiTruck size={19} />
-        )}
-      </span>
-
-      <span className="line-clamp-2 text-[10px] font-black leading-[1.45] text-text sm:text-[11px]">
-        {name}
-      </span>
-
-      <small className="text-[9px] font-bold text-muted">
-        {description}
-      </small>
-    </button>
-  )
-}
-
-function FilterGroup({ title, children }) {
-  return (
-    <div className="border-t border-border py-4 first:border-t-0 first:pt-0">
-      <h4 className="mb-2.5 text-[11px] font-black text-text">
-        {title}
-      </h4>
-
-      <div className="space-y-1">{children}</div>
-    </div>
-  )
-}
-
-function FilterOption({ active, label, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`
-        flex w-full items-center justify-between rounded-[9px]
-        px-2.5 py-2 text-right text-[10px] font-bold
-        transition-all
-        ${
-          active
-            ? "bg-soft-teal text-primary"
-            : "text-muted hover:bg-surface-alt hover:text-text"
-        }
-      `}
-    >
-      <span>{label}</span>
-
-      {active && <FiCheck size={13} />}
-    </button>
-  )
-}
-
-function TripCard({
-  trip,
-  onBooking,
-  formatPrice,
-  formatTime,
-  getDuration,
-}) {
-  const availableSeats =
-    trip.availableSeats ??
-    trip.totalSeats - (trip._count?.bookingSeats || 0)
-
-  const isAvailable =
-    trip.status === "AVAILABLE" && Number(availableSeats) > 0
-
-  return (
-    <article className="overflow-hidden rounded-[18px] border border-border bg-surface shadow-[0_8px_30px_rgba(19,54,72,0.045)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-custom">
-      <div className="p-4 sm:p-5">
-        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-surface-alt text-primary">
-              {trip.company?.logoUrl ? (
-                <img
-                  src={trip.company.logoUrl}
-                  alt=""
-                  className="h-full w-full object-contain p-1.5"
-                />
-              ) : (
-                <FiTruck size={23} />
-              )}
-            </span>
-
-            <div className="min-w-0">
-              <h3 className="truncate text-[13px] font-black text-text">
-                {trip.company?.name || "شركة النقل"}
-              </h3>
-
-              <div className="mt-1 flex items-center gap-2 text-[9px] font-bold text-muted">
-                <span>رحلة مباشرة</span>
-                <span className="h-1 w-1 rounded-full bg-primary" />
-                <span>{trip.code || `رحلة #${trip.id}`}</span>
-              </div>
-            </div>
-          </div>
-
-          <span
-            className={`
-              self-start rounded-full px-2.5 py-1 text-[9px] font-extrabold
-              ${
-                isAvailable
-                  ? "bg-soft-teal text-primary"
-                  : "bg-red-50 text-red-500"
+          <div className="mb-7 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                setTimeFilter(
+                  timeFilter === "morning"
+                    ? "all"
+                    : "morning"
+                )
               }
-            `}
-          >
-            {isAvailable ? "متاحة للحجز" : "غير متاحة"}
-          </span>
-        </div>
-
-        <div className="grid items-center gap-4 md:grid-cols-[1fr_120px_1fr]">
-          <div className="text-right">
-            <span className="text-[9px] font-bold text-muted">
-              الانطلاق
-            </span>
-
-            <strong className="mt-1 block text-[25px] font-black leading-none tracking-[-1px] text-text">
-              {formatTime(trip.departureAt)}
-            </strong>
-
-            <span className="mt-2 block text-[11px] font-extrabold text-text">
-              {trip.origin?.name || "—"}
-            </span>
-          </div>
-
-          <div className="hidden flex-col items-center md:flex">
-            <span className="mb-2 text-[9px] font-bold text-muted">
-              {getDuration(trip.departureAt, trip.arrivalAt)}
-            </span>
-
-            <div className="flex w-full items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full border-2 border-primary bg-surface" />
-
-              <span className="h-px flex-1 bg-border" />
-
-              <FiTruck size={15} className="shrink-0 text-primary" />
-
-              <span className="h-px flex-1 bg-border" />
-
-              <span className="h-2 w-2 rounded-full bg-primary" />
-            </div>
-
-            <span className="mt-2 text-[9px] font-bold text-primary">
-              مباشر
-            </span>
-          </div>
-
-          <div className="text-right md:text-left">
-            <span className="text-[9px] font-bold text-muted">
-              الوصول
-            </span>
-
-            <strong className="mt-1 block text-[25px] font-black leading-none tracking-[-1px] text-text">
-              {formatTime(trip.arrivalAt)}
-            </strong>
-
-            <span className="mt-2 block text-[11px] font-extrabold text-text">
-              {trip.destination?.name || "—"}
-            </span>
-          </div>
-        </div>
-
-        <div className="my-5 border-t border-dashed border-border" />
-
-        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-alt px-2.5 py-1.5 text-[9px] font-extrabold text-muted">
-              <FiClock size={12} />
-              {getDuration(trip.departureAt, trip.arrivalAt)}
-            </span>
-
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-alt px-2.5 py-1.5 text-[9px] font-extrabold text-muted">
-              <FiUsers size={12} />
-              {availableSeats} مقعد متاح
-            </span>
-
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-alt px-2.5 py-1.5 text-[9px] font-extrabold text-muted">
-              <FiMapPin size={12} />
-              رحلة مباشرة
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between gap-4 sm:justify-end">
-            <div className="text-right">
-              <span className="block text-[9px] font-bold text-muted">
-                السعر للمسافر
-              </span>
-
-              <strong className="mt-0.5 block text-[19px] font-black text-primary">
-                {formatPrice(trip.price)}
-                <span className="ms-1 text-[9px] font-extrabold">
-                  ل.س
-                </span>
-              </strong>
-            </div>
+              className={`rounded-[12px] border px-4 py-2 text-[10px] font-extrabold transition-all ${
+                timeFilter === "morning"
+                  ? "border-primary bg-soft-teal text-primary"
+                  : "border-border bg-surface text-muted hover:border-primary/40"
+              }`}
+            >
+              صباحًا
+            </button>
 
             <button
               type="button"
-              disabled={!isAvailable}
-              onClick={onBooking}
-              className={`
-                min-h-[43px] rounded-xl px-5 text-[11px] font-black
-                transition-all
-                ${
-                  isAvailable
-                    ? "bg-primary text-white hover:-translate-y-0.5 hover:bg-primary-deep"
-                    : "cursor-not-allowed bg-surface-alt text-muted"
-                }
-              `}
+              onClick={() =>
+                setTimeFilter(
+                  timeFilter === "afternoon"
+                    ? "all"
+                    : "afternoon"
+                )
+              }
+              className={`rounded-[12px] border px-4 py-2 text-[10px] font-extrabold transition-all ${
+                timeFilter === "afternoon"
+                  ? "border-primary bg-soft-teal text-primary"
+                  : "border-border bg-surface text-muted hover:border-primary/40"
+              }`}
             >
-              {isAvailable ? "احجز مقعدك" : "غير متاحة"}
+              بعد الظهر
             </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setTimeFilter(
+                  timeFilter === "evening"
+                    ? "all"
+                    : "evening"
+                )
+              }
+              className={`rounded-[12px] border px-4 py-2 text-[10px] font-extrabold transition-all ${
+                timeFilter === "evening"
+                  ? "border-primary bg-soft-teal text-primary"
+                  : "border-border bg-surface text-muted hover:border-primary/40"
+              }`}
+            >
+              مساءً
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setTimeFilter(
+                  timeFilter === "night"
+                    ? "all"
+                    : "night"
+                )
+              }
+              className={`rounded-[12px] border px-4 py-2 text-[10px] font-extrabold transition-all ${
+                timeFilter === "night"
+                  ? "border-primary bg-soft-teal text-primary"
+                  : "border-border bg-surface text-muted hover:border-primary/40"
+              }`}
+            >
+              ليلًا
+            </button>
+
+            <select
+              value={sort}
+              onChange={(e) =>
+                setSort(e.target.value)
+              }
+              className="mr-auto rounded-[12px] border border-border bg-surface px-4 py-2 text-[10px] font-extrabold text-text outline-none transition-all focus:border-primary"
+            >
+              <option value="departure">
+                الأقرب بالوقت
+              </option>
+
+              <option value="price">
+                الأرخص
+              </option>
+
+              <option value="duration">
+                الأقصر مدة
+              </option>
+            </select>
           </div>
+
+          {isLoading && (
+            <div className="grid gap-5 lg:grid-cols-2">
+              {[1, 2, 3, 4].map((item) => (
+                <div
+                  key={item}
+                  className="h-[230px] animate-pulse rounded-[22px] border border-border bg-surface"
+                />
+              ))}
+            </div>
+          )}
+
+          {isError && !isLoading && (
+            <div className="rounded-[22px] border border-border bg-surface px-6 py-12 text-center shadow-custom">
+              <h3 className="text-lg font-black text-text">
+                ما قدرنا نجيب الرحلات
+              </h3>
+
+              <p className="mt-2 text-sm text-muted">
+                جرّبي تغيير البحث أو التاريخ.
+              </p>
+            </div>
+          )}
+
+          {!isLoading &&
+            !isError &&
+            filteredTrips.length === 0 && (
+              <div className="rounded-[22px] border border-border bg-surface px-6 py-14 text-center shadow-custom">
+                <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-soft-teal text-primary">
+                  <FiSearch className="text-xl" />
+                </div>
+
+                <h3 className="text-lg font-black text-text">
+                  ما لقينا رحلات بهالبحث
+                </h3>
+
+                <p className="mt-2 text-sm text-muted">
+                  جرّبي تاريخ أو وجهة مختلفة.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={scrollToSearch}
+                  className="mt-6 rounded-[13px] bg-primary px-5 py-3 text-[11px] font-extrabold text-white transition-all duration-300 hover:-translate-y-1 hover:bg-primary-deep"
+                >
+                  تعديل البحث
+                </button>
+              </div>
+            )}
+
+          {!isLoading &&
+            !isError &&
+            filteredTrips.length > 0 && (
+              <div className="grid gap-5 lg:grid-cols-2">
+                {filteredTrips.map((trip, index) => (
+                  <article
+                    key={trip.id}
+                    className="group overflow-hidden rounded-[22px] border border-border bg-surface shadow-[0_15px_50px_rgba(19,54,72,0.06)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_25px_60px_rgba(19,54,72,0.11)]"
+                    style={{
+                      opacity: resultsVisible ? 1 : 0,
+                      transform: resultsVisible
+                        ? "translateY(0)"
+                        : "translateY(30px)",
+                      transition: `opacity 800ms ease ${
+                        index * 120 + 200
+                      }ms, transform 900ms cubic-bezier(0.16,1,0.3,1) ${
+                        index * 120 + 200
+                      }ms`,
+                    }}
+                  >
+                    <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-[13px] bg-soft-teal text-primary">
+                          {trip.company?.logoUrl ? (
+                            <img
+                              src={trip.company.logoUrl}
+                              alt={trip.company.name}
+                              className="h-full w-full object-contain"
+                            />
+                          ) : (
+                            <FiMapPin className="text-lg" />
+                          )}
+                        </div>
+
+                        <div>
+                          <h3 className="text-[13px] font-black text-text">
+                            {trip.company?.name ||
+                              "شركة النقل"}
+                          </h3>
+
+                          <span className="text-[10px] font-bold text-muted">
+                            {trip.code || "رحلة"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span className="rounded-full bg-soft-teal px-3 py-1.5 text-[9px] font-extrabold text-primary">
+                        متاحة
+                      </span>
+                    </div>
+
+                    <div className="px-5 py-5">
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                        <div>
+                          <span className="block text-[10px] font-bold text-muted">
+                            الانطلاق
+                          </span>
+
+                          <strong className="mt-1 block text-[22px] font-black text-text">
+                            {formatTime(
+                              trip.departureAt
+                            )}
+                          </strong>
+
+                          <span className="mt-1 block text-[11px] font-extrabold text-text">
+                            {trip.origin?.name ||
+                              originName}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="h-px w-16 bg-border" />
+
+                          <FiArrowLeft className="text-primary" />
+
+                          <span className="flex items-center gap-1 text-[9px] font-bold text-muted">
+                            <FiClock />
+
+                            {formatDuration(
+                              trip.departureAt,
+                              trip.arrivalAt
+                            )}
+                          </span>
+                        </div>
+
+                        <div className="text-left">
+                          <span className="block text-[10px] font-bold text-muted">
+                            الوصول
+                          </span>
+
+                          <strong className="mt-1 block text-[22px] font-black text-text">
+                            {formatTime(
+                              trip.arrivalAt
+                            )}
+                          </strong>
+
+                          <span className="mt-1 block text-[11px] font-extrabold text-text">
+                            {trip.destination?.name ||
+                              destinationName}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 flex items-end justify-between gap-4 border-t border-border pt-5">
+                        <div>
+                          <span className="block text-[10px] font-bold text-muted">
+                            سعر التذكرة
+                          </span>
+
+                          <strong className="mt-1 block text-[20px] font-black text-primary">
+                            {formatPrice(trip.price)}
+                          </strong>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate(
+                              `/booking/${trip.id}?people=${people}`
+                            )
+                          }
+                          className="flex items-center gap-2 rounded-[13px] bg-primary px-5 py-3 text-[10px] font-extrabold text-white transition-all duration-300 hover:-translate-y-1 hover:bg-primary-deep"
+                        >
+                          احجز الرحلة
+
+                          <FiArrowLeft className="transition-transform duration-300 group-hover:-translate-x-1" />
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
         </div>
-      </div>
-    </article>
+      </section>
+    </main>
   )
-}
-
-function TripSkeleton() {
-  return (
-    <div className="animate-pulse rounded-[18px] border border-border bg-surface p-5">
-      <div className="mb-6 flex justify-between gap-4">
-        <div className="flex gap-3">
-          <div className="h-11 w-11 rounded-xl bg-surface-alt" />
-
-          <div>
-            <div className="h-3 w-32 rounded bg-surface-alt" />
-            <div className="mt-2 h-2.5 w-24 rounded bg-surface-alt" />
-          </div>
-        </div>
-
-        <div className="h-6 w-20 rounded-full bg-surface-alt" />
-      </div>
-
-      <div className="grid grid-cols-3 gap-5">
-        <div>
-          <div className="h-2.5 w-14 rounded bg-surface-alt" />
-          <div className="mt-2 h-7 w-20 rounded bg-surface-alt" />
-          <div className="mt-2 h-2.5 w-14 rounded bg-surface-alt" />
-        </div>
-
-        <div className="hidden items-center justify-center md:flex">
-          <div className="h-px w-full bg-surface-alt" />
-        </div>
-
-        <div>
-          <div className="h-2.5 w-14 rounded bg-surface-alt" />
-          <div className="mt-2 h-7 w-20 rounded bg-surface-alt" />
-          <div className="mt-2 h-2.5 w-14 rounded bg-surface-alt" />
-        </div>
-      </div>
-
-      <div className="my-5 h-px bg-surface-alt" />
-
-      <div className="flex justify-between gap-4">
-        <div className="h-7 w-48 rounded bg-surface-alt" />
-        <div className="h-10 w-28 rounded-xl bg-surface-alt" />
-      </div>
-    </div>
-  )
-}
-
-function getCityName(id) {
-  const cities = {
-    1: "دمشق",
-    2: "حلب",
-    3: "حمص",
-    4: "حماة",
-    5: "اللاذقية",
-    6: "طرطوس",
-    7: "إدلب",
-  }
-
-  return cities[id] || "—"
 }
 
 export default ResultsPage

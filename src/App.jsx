@@ -14,6 +14,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute"
 import HelpPage from "./pages/help/helppage"
 import AboutPage from "./pages/about/aboutpage"
 import CompaniesPage from "./pages/companies/companiespage"
+import TrackingPage from "./pages/tracking/trackingpage"
 
 function App() {
   return (
@@ -58,6 +59,8 @@ function App() {
         <Route path="/about" element={<AboutPage/>}/>
 
         <Route path="/companies" element={<CompaniesPage/>} />
+        
+        <Route path="/tracking" element={<TrackingPage/>} />
         
       </Route>
 

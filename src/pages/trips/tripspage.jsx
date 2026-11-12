@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import {
   FaChevronLeft,
   FaTicketAlt,
@@ -12,54 +12,89 @@ import {
   FaTimesCircle,
   FaSpinner,
   FaLocationArrow,
-} from "react-icons/fa";
-import { useMyBookings, useCancelBooking } from "../../hooks/use-bookings";
+} from "react-icons/fa"
+import { useMyBookings, useCancelBooking } from "../../hooks/use-bookings"
 
 function TripsPage() {
-  const navigate = useNavigate();
-  const [selectedBooking, setSelectedBooking] = useState(null);
+  const navigate = useNavigate()
+  const pageRef = useRef(null)
 
-  const { data, isLoading, isError } = useMyBookings();
-  const { mutate: cancelBooking, isPending: isCancelling } = useCancelBooking();
+  const [pageVisible, setPageVisible] = useState(false)
+  const [selectedBooking, setSelectedBooking] = useState(null)
+
+  const { data, isLoading, isError } = useMyBookings()
+  const { mutate: cancelBooking, isPending: isCancelling } =
+    useCancelBooking()
 
   const bookings = Array.isArray(data)
     ? data
-    : data?.items || data?.bookings || data?.data || [];
+    : data?.items || data?.bookings || data?.data || []
+
+  useEffect(() => {
+    const element = pageRef.current
+
+    if (!element) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setPageVisible(true)
+          observer.disconnect()
+        }
+      },
+      {
+        threshold: 0.05,
+        rootMargin: "0px 0px -40px 0px",
+      }
+    )
+
+    observer.observe(element)
+
+    return () => observer.disconnect()
+  }, [])
+
+  const animation = (delay = 0) => ({
+    opacity: pageVisible ? 1 : 0,
+    transform: pageVisible
+      ? "translateY(0) scale(1)"
+      : "translateY(35px) scale(0.97)",
+    transition: `opacity 850ms ease ${delay}ms, transform 900ms cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
+  })
 
   const formatDate = (date) => {
-    if (!date) return "—";
+    if (!date) return "—"
 
     return new Date(date).toLocaleDateString("ar-SY", {
       day: "numeric",
       month: "long",
       year: "numeric",
-    });
-  };
+    })
+  }
 
   const formatTime = (date) => {
-    if (!date) return "—";
+    if (!date) return "—"
 
     return new Date(date).toLocaleTimeString("ar-SY", {
       hour: "2-digit",
       minute: "2-digit",
-    });
-  };
+    })
+  }
 
   const formatPrice = (price) => {
-    if (price === undefined || price === null) return "—";
+    if (price === undefined || price === null) return "—"
 
-    return `${Number(price).toLocaleString("ar-SY")} ل.س`;
-  };
+    return `${Number(price).toLocaleString("ar-SY")} ل.س`
+  }
 
   const getStatus = (status) => {
-    const normalized = String(status || "").toUpperCase();
+    const normalized = String(status || "").toUpperCase()
 
     if (normalized === "CONFIRMED") {
       return {
         label: "تم تأكيد الحجز",
         className: "bg-soft-teal text-primary-deep",
         icon: <FaCheckCircle size={14} />,
-      };
+      }
     }
 
     if (normalized === "PENDING") {
@@ -67,7 +102,7 @@ function TripsPage() {
         label: "قيد المراجعة",
         className: "bg-[#fff2da] text-[#a16c21]",
         icon: <FaInfoCircle size={14} />,
-      };
+      }
     }
 
     if (normalized === "CANCELLED") {
@@ -75,7 +110,7 @@ function TripsPage() {
         label: "الحجز ملغي",
         className: "bg-red-50 text-red-500",
         icon: <FaTimesCircle size={14} />,
-      };
+      }
     }
 
     if (normalized === "COMPLETED") {
@@ -83,40 +118,46 @@ function TripsPage() {
         label: "الرحلة مكتملة",
         className: "bg-surface-alt text-muted",
         icon: <FaCheckCircle size={14} />,
-      };
+      }
     }
 
     return {
       label: status || "حجز",
       className: "bg-surface-alt text-muted",
       icon: <FaInfoCircle size={14} />,
-    };
-  };
+    }
+  }
 
   const handleCancel = (booking) => {
-    const bookingId = booking.id || booking.bookingId;
+    const bookingId = booking.id || booking.bookingId
 
-    if (!bookingId) return;
+    if (!bookingId) return
 
     const confirmed = window.confirm(
-      "هل أنت متأكد من رغبتك في إلغاء هذا الحجز؟",
-    );
+      "هل أنت متأكد من رغبتك في إلغاء هذا الحجز؟"
+    )
 
-    if (!confirmed) return;
+    if (!confirmed) return
 
-    setSelectedBooking(bookingId);
+    setSelectedBooking(bookingId)
 
     cancelBooking(bookingId, {
       onSettled: () => {
-        setSelectedBooking(null);
+        setSelectedBooking(null)
       },
-    });
-  };
+    })
+  }
 
   if (isLoading) {
     return (
       <main dir="rtl" className="min-h-[70vh] bg-bg px-4 py-12">
-        <div className="mx-auto flex min-h-[400px] max-w-[760px] items-center justify-center">
+        <div
+          className="mx-auto flex min-h-[400px] max-w-[760px] items-center justify-center"
+          style={{
+            opacity: 1,
+            animation: "none",
+          }}
+        >
           <div className="text-center">
             <div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
             <p className="text-xs font-bold text-muted">
@@ -125,14 +166,17 @@ function TripsPage() {
           </div>
         </div>
       </main>
-    );
+    )
   }
 
   if (isError) {
     return (
       <main dir="rtl" className="min-h-[70vh] bg-bg px-4 py-12">
         <div className="mx-auto flex min-h-[400px] max-w-[760px] items-center justify-center">
-          <div className="rounded-[20px] border border-border bg-surface px-7 py-8 text-center shadow-custom">
+          <div
+            className="rounded-[20px] border border-border bg-surface px-7 py-8 text-center shadow-custom"
+            style={animation(0)}
+          >
             <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-red-50 text-red-500">
               <FaInfoCircle size={23} />
             </div>
@@ -148,24 +192,44 @@ function TripsPage() {
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="rounded-xl bg-primary px-5 py-2.5 text-xs font-extrabold text-white transition hover:bg-primary-deep"
+              className="rounded-xl bg-primary px-5 py-2.5 text-xs font-extrabold text-white transition duration-300 hover:-translate-y-0.5 hover:bg-primary-deep"
             >
               إعادة المحاولة
             </button>
           </div>
         </div>
       </main>
-    );
+    )
   }
 
   return (
-    <main dir="rtl" className="inner-main min-h-[70vh] bg-bg">
+    <main
+      ref={pageRef}
+      dir="rtl"
+      className="inner-main min-h-[70vh] overflow-hidden bg-bg"
+    >
       <section className="relative overflow-hidden border-b border-border bg-gradient-to-br from-surface-alt to-bg px-4 pb-11 pt-7">
-        <div className="pointer-events-none absolute -left-24 -top-44 h-[350px] w-[350px] rounded-full border border-dashed border-primary/10" />
+        <div
+          className="pointer-events-none absolute -left-24 -top-44 h-[350px] w-[350px] rounded-full border border-dashed border-primary/10"
+          style={{
+            opacity: pageVisible ? 1 : 0,
+            transform: pageVisible
+              ? "rotate(0deg) scale(1)"
+              : "rotate(-25deg) scale(0.8)",
+            transition:
+              "opacity 1000ms ease, transform 1200ms cubic-bezier(0.16,1,0.3,1)",
+          }}
+        />
 
         <div className="relative mx-auto max-w-[1216px]">
-          <div className="mb-5 flex items-center gap-2 text-[11px] font-extrabold text-muted">
-            <Link to="/" className="transition hover:text-primary">
+          <div
+            className="mb-5 flex items-center gap-2 text-[11px] font-extrabold text-muted"
+            style={animation(100)}
+          >
+            <Link
+              to="/"
+              className="transition duration-300 hover:text-primary"
+            >
               الرئيسية
             </Link>
 
@@ -174,15 +238,27 @@ function TripsPage() {
             <span className="text-text">حجوزاتي</span>
           </div>
 
-          <span className="text-[11px] font-extrabold text-primary">
+          <span
+            className="inline-block text-[11px] font-extrabold text-primary"
+            style={animation(250)}
+          >
             كل رحلاتك بمكان واحد
           </span>
 
-          <h1 className="mb-1 mt-2 text-[30px] font-black tracking-tight text-text sm:text-[40px]">
-            تذاكرك <span className="text-primary">دايماً معك.</span>
+          <h1
+            className="mb-1 mt-2 text-[30px] font-black tracking-tight text-text sm:text-[40px]"
+            style={animation(400)}
+          >
+            تذاكرك{" "}
+            <span className="text-primary">
+              دايماً معك.
+            </span>
           </h1>
 
-          <p className="text-xs text-muted sm:text-[13px]">
+          <p
+            className="text-xs text-muted sm:text-[13px]"
+            style={animation(550)}
+          >
             راقب حجوزاتك، وارجع لتفاصيل الرحلة وقت ما تحتاج.
           </p>
         </div>
@@ -190,7 +266,11 @@ function TripsPage() {
 
       <section className="px-4 py-8 sm:py-10">
         <div className="mx-auto max-w-[1216px]">
-          <div className="mb-5 flex items-center justify-between gap-4">
+
+          <div
+            className="mb-5 flex items-center justify-between gap-4"
+            style={animation(700)}
+          >
             <div>
               <h2 className="text-[18px] font-black text-text">
                 رحلاتي القادمة
@@ -206,7 +286,7 @@ function TripsPage() {
             <button
               type="button"
               onClick={() => navigate("/results")}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[10px] bg-primary px-4 text-xs font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-primary-deep"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[10px] bg-primary px-4 text-xs font-extrabold text-white transition duration-300 hover:-translate-y-1 hover:bg-primary-deep hover:shadow-lg"
             >
               <FaPlus size={13} />
               حجز جديد
@@ -214,23 +294,43 @@ function TripsPage() {
           </div>
 
           {bookings.length === 0 ? (
-            <div className="rounded-[20px] border border-border bg-surface px-6 py-12 text-center shadow-custom">
-              <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-soft-teal text-primary">
+            <div
+              className="rounded-[20px] border border-border bg-surface px-6 py-12 text-center shadow-custom"
+              style={animation(900)}
+            >
+              <div
+                className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-soft-teal text-primary"
+                style={{
+                  transform: pageVisible
+                    ? "scale(1) rotate(0deg)"
+                    : "scale(0.5) rotate(-20deg)",
+                  opacity: pageVisible ? 1 : 0,
+                  transition:
+                    "opacity 700ms ease 1000ms, transform 900ms cubic-bezier(0.16,1,0.3,1) 1000ms",
+                }}
+              >
                 <FaTicketAlt size={25} />
               </div>
 
-              <h3 className="mb-2 text-lg font-black text-text">
+              <h3
+                className="mb-2 text-lg font-black text-text"
+                style={animation(1100)}
+              >
                 ما عندك حجوزات حالياً
               </h3>
 
-              <p className="mx-auto mb-6 max-w-[420px] text-xs font-bold leading-6 text-muted">
+              <p
+                className="mx-auto mb-6 max-w-[420px] text-xs font-bold leading-6 text-muted"
+                style={animation(1250)}
+              >
                 أول ما تحجز رحلة رح تلاقي تفاصيلها وتذكرتك هون.
               </p>
 
               <button
                 type="button"
                 onClick={() => navigate("/results")}
-                className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-white transition hover:bg-primary-deep"
+                className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-white transition duration-300 hover:-translate-y-1 hover:bg-primary-deep"
+                style={animation(1400)}
               >
                 <FaPlus size={13} />
                 احجز رحلتك الأولى
@@ -238,51 +338,79 @@ function TripsPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {bookings.map((booking) => {
-                const trip = booking.trip || {};
-                const origin = trip.origin || booking.origin || {};
+              {bookings.map((booking, index) => {
+                const trip = booking.trip || {}
+                const origin = trip.origin || booking.origin || {}
                 const destination =
-                  trip.destination || booking.destination || {};
-                const company = trip.company || booking.company || {};
+                  trip.destination || booking.destination || {}
+                const company = trip.company || booking.company || {}
 
-                const departureAt = trip.departureAt || booking.departureAt;
+                const departureAt =
+                  trip.departureAt || booking.departureAt
 
-                const arrivalAt = trip.arrivalAt || booking.arrivalAt;
+                const arrivalAt =
+                  trip.arrivalAt || booking.arrivalAt
 
-                const seats = booking.seats || booking.bookingSeats || [];
+                const seats =
+                  booking.seats ||
+                  booking.bookingSeats ||
+                  []
 
                 const seatNumbers = Array.isArray(seats)
                   ? seats
-                      .map((seat) => seat.seatNumber ?? seat.number ?? seat)
+                      .map(
+                        (seat) =>
+                          seat.seatNumber ??
+                          seat.number ??
+                          seat
+                      )
                       .join("، ")
-                  : booking.seatNumber || "—";
+                  : booking.seatNumber || "—"
 
                 const bookingId =
-                  booking.id || booking.bookingId || booking.code;
+                  booking.id ||
+                  booking.bookingId ||
+                  booking.code
 
                 const status = getStatus(
-                  booking.status || booking.bookingStatus,
-                );
+                  booking.status ||
+                    booking.bookingStatus
+                )
 
                 const bookingStatus = String(
-                  booking.status || booking.bookingStatus || "",
-                ).toUpperCase();
+                  booking.status ||
+                    booking.bookingStatus ||
+                    ""
+                ).toUpperCase()
 
-                const isCancelled = bookingStatus === "CANCELLED";
+                const isCancelled =
+                  bookingStatus === "CANCELLED"
 
-                const isCompleted = bookingStatus === "COMPLETED";
+                const isCompleted =
+                  bookingStatus === "COMPLETED"
 
                 const isCancellingThis =
-                  isCancelling && selectedBooking === bookingId;
+                  isCancelling &&
+                  selectedBooking === bookingId
+
+                const cardDelay =
+                  900 + index * 220
 
                 return (
                   <article
                     key={bookingId}
-                    className="overflow-hidden rounded-[19px] border border-border bg-surface"
+                    className="group overflow-hidden rounded-[19px] border border-border bg-surface shadow-[0_15px_50px_rgba(19,54,72,0.04)] transition duration-500 hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(19,54,72,0.09)]"
+                    style={{
+                      opacity: pageVisible ? 1 : 0,
+                      transform: pageVisible
+                        ? "translateY(0) scale(1)"
+                        : "translateY(45px) scale(0.97)",
+                      transition: `opacity 900ms ease ${cardDelay}ms, transform 1000ms cubic-bezier(0.16,1,0.3,1) ${cardDelay}ms`,
+                    }}
                   >
                     <div className="flex items-center justify-between gap-4 border-b border-dashed border-border bg-surface-alt px-5 py-4 sm:px-6">
                       <div className="flex items-center gap-2.5">
-                        <span className="grid h-10 w-10 place-items-center rounded-xl bg-soft-teal text-primary">
+                        <span className="grid h-10 w-10 place-items-center rounded-xl bg-soft-teal text-primary transition duration-500 group-hover:scale-110 group-hover:rotate-3">
                           <FaTicketAlt size={17} />
                         </span>
 
@@ -301,7 +429,7 @@ function TripsPage() {
                       </div>
 
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-extrabold ${status.className}`}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-extrabold transition duration-300 group-hover:scale-105 ${status.className}`}
                       >
                         {status.icon}
                         {status.label}
@@ -325,7 +453,10 @@ function TripsPage() {
                         </div>
 
                         <div className="flex flex-1 flex-col items-center gap-1.5 text-primary">
-                          <FaLocationArrow size={17} />
+                          <FaLocationArrow
+                            size={17}
+                            className="transition duration-500 group-hover:translate-x-1"
+                          />
 
                           <div className="w-full border-t border-dashed border-border" />
 
@@ -351,19 +482,30 @@ function TripsPage() {
 
                       <div className="flex flex-col gap-2.5 border-r-0 sm:border-r sm:border-border sm:pr-6">
                         <span className="flex items-center gap-2 text-[11px] font-bold text-muted">
-                          <FaMapMarkerAlt size={14} className="text-primary" />
+                          <FaMapMarkerAlt
+                            size={14}
+                            className="text-primary"
+                          />
                           {company.name || "شركة النقل"}
                         </span>
 
                         <span className="flex items-center gap-2 text-[11px] font-bold text-muted">
-                          <FaUsers size={14} className="text-primary" />
+                          <FaUsers
+                            size={14}
+                            className="text-primary"
+                          />
                           المقاعد: {seatNumbers || "—"}
                         </span>
 
                         <span className="flex items-center gap-2 text-[11px] font-bold text-muted">
-                          <FaWallet size={14} className="text-primary" />
+                          <FaWallet
+                            size={14}
+                            className="text-primary"
+                          />
                           {formatPrice(
-                            booking.total || booking.totalPrice || trip.price,
+                            booking.total ||
+                              booking.totalPrice ||
+                              trip.price
                           )}
                         </span>
                       </div>
@@ -373,9 +515,11 @@ function TripsPage() {
                       <button
                         type="button"
                         onClick={() =>
-                          navigate(`/tracking?bookingId=${bookingId}`)
+                          navigate(
+                            `/tracking?bookingId=${bookingId}`
+                          )
                         }
-                        className="inline-flex min-h-[39px] items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 text-[11px] font-extrabold text-text transition hover:-translate-y-0.5 hover:border-primary hover:text-primary"
+                        className="inline-flex min-h-[39px] items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 text-[11px] font-extrabold text-text transition duration-300 hover:-translate-y-1 hover:border-primary hover:text-primary hover:shadow-sm"
                       >
                         <FaLocationArrow size={14} />
                         تتبّع الرحلة
@@ -392,7 +536,7 @@ function TripsPage() {
                             },
                           })
                         }
-                        className="inline-flex min-h-[39px] items-center justify-center gap-2 rounded-xl bg-surface-alt px-4 text-[11px] font-extrabold text-text transition hover:-translate-y-0.5 hover:bg-soft-teal hover:text-primary"
+                        className="inline-flex min-h-[39px] items-center justify-center gap-2 rounded-xl bg-surface-alt px-4 text-[11px] font-extrabold text-text transition duration-300 hover:-translate-y-1 hover:bg-soft-teal hover:text-primary"
                       >
                         <FaTicketAlt size={15} />
                         عرض التذكرة
@@ -403,11 +547,14 @@ function TripsPage() {
                           type="button"
                           onClick={() => handleCancel(booking)}
                           disabled={isCancellingThis}
-                          className="inline-flex min-h-[39px] items-center justify-center gap-2 rounded-xl px-4 text-[11px] font-extrabold text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 sm:mr-auto"
+                          className="inline-flex min-h-[39px] items-center justify-center gap-2 rounded-xl px-4 text-[11px] font-extrabold text-red-500 transition duration-300 hover:-translate-y-1 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 sm:mr-auto"
                         >
                           {isCancellingThis ? (
                             <>
-                              <FaSpinner size={14} className="animate-spin" />
+                              <FaSpinner
+                                size={14}
+                                className="animate-spin"
+                              />
                               جاري الإلغاء...
                             </>
                           ) : (
@@ -420,14 +567,14 @@ function TripsPage() {
                       )}
                     </div>
                   </article>
-                );
+                )
               })}
             </div>
           )}
         </div>
       </section>
     </main>
-  );
+  )
 }
 
-export default TripsPage;
+export default TripsPage

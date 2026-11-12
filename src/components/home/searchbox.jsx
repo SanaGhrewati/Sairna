@@ -35,7 +35,10 @@ function SearchBox() {
           observer.disconnect()
         }
       },
-      { threshold: 0.18, rootMargin: "0px 0px -50px 0px" }
+      {
+        threshold: 0.18,
+        rootMargin: "0px 0px -50px 0px",
+      }
     )
 
     observer.observe(element)
@@ -62,12 +65,16 @@ function SearchBox() {
       return
     }
 
-    navigate(`/results?originId=${origin}&destinationId=${destination}&date=${date}&people=${people}`)
+    navigate(
+      `/results?originId=${origin}&destinationId=${destination}&date=${date}&people=${people}`
+    )
   }
 
-  const fieldClass = "h-[50px] w-full rounded-[14px] border border-border bg-bg pr-10 pl-3 text-[12px] font-bold text-text outline-none transition-all duration-300 hover:border-primary/50 focus:border-primary focus:bg-surface focus:ring-4 focus:ring-primary/10 max-[650px]:h-11 max-[650px]:rounded-xl max-[650px]:pr-9"
+  const fieldClass =
+    "h-[50px] w-full rounded-[14px] border border-border bg-bg pr-10 pl-3 text-[12px] font-bold text-text outline-none transition-all duration-300 hover:border-primary/50 focus:border-primary focus:bg-surface focus:ring-4 focus:ring-primary/10 max-[650px]:h-11 max-[650px]:rounded-xl max-[650px]:pr-9"
 
-  const iconClass = "absolute right-3 top-1/2 z-10 -translate-y-1/2 text-primary transition-transform duration-300"
+  const iconClass =
+    "absolute right-3 top-1/2 z-10 -translate-y-1/2 text-primary transition-transform duration-300"
 
   const reveal = (delay) => ({
     opacity: isVisible ? 1 : 0,
@@ -76,20 +83,30 @@ function SearchBox() {
   })
 
   return (
-    <section ref={boxRef} dir="rtl" className="relative z-20 mx-auto -mt-[32px] w-full max-w-[1120px] px-5 sm:px-7 lg:-mt-[38px]">
+    <section
+      ref={boxRef}
+      dir="rtl"
+      className="relative z-20 mx-auto -mt-[32px] w-full max-w-[1120px] px-5 sm:px-7 lg:-mt-[38px]"
+    >
       <div
         className="relative overflow-hidden rounded-[24px] border border-border bg-surface shadow-[0_25px_70px_rgba(19,54,72,0.12)]"
         style={{
           opacity: isVisible ? 1 : 0,
-          transform: isVisible ? "translateY(0) scale(1)" : "translateY(35px) scale(.97)",
-          transition: "opacity 1200ms ease, transform 1400ms cubic-bezier(0.16,1,0.3,1)",
+          transform: isVisible
+            ? "translateY(0) scale(1)"
+            : "translateY(35px) scale(.97)",
+          transition:
+            "opacity 1200ms ease, transform 1400ms cubic-bezier(0.16,1,0.3,1)",
         }}
       >
         <div className="pointer-events-none absolute -right-28 -top-28 h-64 w-64 rounded-full bg-primary/8 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-28 -left-28 h-64 w-64 rounded-full bg-soft-teal/60 blur-3xl" />
 
         <div className="relative flex items-center justify-between gap-5 border-b border-border px-6 py-5 max-[850px]:flex-col max-[850px]:items-start max-[650px]:px-4 max-[650px]:py-4">
-          <div className="flex items-center gap-3" style={reveal(450)}>
+          <div
+            className="flex items-center gap-3"
+            style={reveal(450)}
+          >
             <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-[13px] bg-soft-teal text-primary">
               <span className="absolute inset-0 rounded-[13px] bg-primary/10" />
               <FiMapPin className="relative text-lg" />
@@ -115,84 +132,120 @@ function SearchBox() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="relative grid grid-cols-[1fr_auto_1fr_1fr_0.8fr_auto] items-end gap-3 p-5 max-[950px]:grid-cols-2 max-[950px]:gap-4 max-[650px]:gap-3 max-[650px]:p-4">
-          <label className="flex min-w-0 flex-col gap-2" style={reveal(750)}>
-            <span className="text-[10px] font-extrabold text-muted sm:text-[11px]">
-              من وين؟
-            </span>
+        <form
+          onSubmit={handleSubmit}
+          className="relative grid grid-cols-[1fr_auto_1fr_1fr_0.8fr_auto] items-end gap-3 p-5 max-[950px]:grid-cols-2 max-[950px]:gap-4 max-[650px]:gap-3 max-[650px]:p-4"
+        >
+          <div className="contents max-[950px]:flex max-[950px]:items-end max-[950px]:gap-2 max-[650px]:gap-1">
+            <label
+              className="flex min-w-0 flex-1 flex-col gap-2"
+              style={reveal(750)}
+            >
+              <span className="text-[10px] font-extrabold text-muted sm:text-[11px]">
+                من وين؟
+              </span>
 
-            <div className="group relative">
-              <FiMapPin className={`${iconClass} group-hover:scale-110`} />
+              <div className="group relative">
+                <FiMapPin
+                  className={`${iconClass} group-hover:scale-110`}
+                />
 
-              <select value={origin} onChange={(e) => setOrigin(e.target.value)} className={fieldClass}>
-                {cities.map((city) => (
-                  <option key={city.value} value={city.value}>
-                    {city.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </label>
+                <select
+                  value={origin}
+                  onChange={(e) => setOrigin(e.target.value)}
+                  className={fieldClass}
+                >
+                  {cities.map((city) => (
+                    <option key={city.value} value={city.value}>
+                      {city.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </label>
 
-          <button
-            type="button"
-            onClick={swapCities}
-            aria-label="تبديل المحافظات"
-            className="mb-1 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-soft-teal text-primary shadow-sm transition-all duration-500 hover:scale-110 hover:bg-primary hover:text-white max-[950px]:hidden"
-            style={reveal(850)}
+            <button
+              type="button"
+              onClick={swapCities}
+              aria-label="تبديل المحافظات"
+              className="mb-1 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-soft-teal text-primary shadow-sm transition-all duration-500 hover:scale-110 hover:bg-primary hover:text-white max-[650px]:h-8 max-[650px]:w-8"
+              style={reveal(850)}
+            >
+              <FiRepeat
+                className={`text-[15px] transition-transform duration-700 ${
+                  isSwapped ? "rotate-180" : "rotate-0"
+                }`}
+              />
+            </button>
+
+            <label
+              className="flex min-w-0 flex-1 flex-col gap-2"
+              style={reveal(900)}
+            >
+              <span className="text-[10px] font-extrabold text-muted sm:text-[11px]">
+                لوين؟
+              </span>
+
+              <div className="group relative">
+                <FiMapPin
+                  className={`${iconClass} group-hover:scale-110`}
+                />
+
+                <select
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  className={fieldClass}
+                >
+                  {cities.map((city) => (
+                    <option key={city.value} value={city.value}>
+                      {city.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </label>
+          </div>
+
+          <label
+            className="flex min-w-0 flex-col gap-2"
+            style={reveal(1050)}
           >
-            <FiRepeat className={`text-[16px] transition-transform duration-700 ${isSwapped ? "rotate-180" : "rotate-0"}`} />
-          </button>
-
-          <label className="flex min-w-0 flex-col gap-2" style={reveal(900)}>
-            <span className="text-[10px] font-extrabold text-muted sm:text-[11px]">
-              لوين؟
-            </span>
-
-            <div className="group relative">
-              <FiMapPin className={`${iconClass} group-hover:scale-110`} />
-
-              <select value={destination} onChange={(e) => setDestination(e.target.value)} className={fieldClass}>
-                {cities.map((city) => (
-                  <option key={city.value} value={city.value}>
-                    {city.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </label>
-
-          <button
-            type="button"
-            onClick={swapCities}
-            aria-label="تبديل المحافظات"
-            className="absolute right-1/2 top-[104px] z-20 hidden h-9 w-9 translate-x-1/2 items-center justify-center rounded-full border border-border bg-soft-teal text-primary shadow-md transition-all duration-500 hover:scale-110 hover:bg-primary hover:text-white max-[950px]:flex max-[650px]:top-[100px]"
-            style={reveal(850)}
-          >
-            <FiRepeat className={`text-[15px] transition-transform duration-700 ${isSwapped ? "rotate-180" : "rotate-0"}`} />
-          </button>
-
-          <label className="flex min-w-0 flex-col gap-2" style={reveal(1050)}>
             <span className="text-[10px] font-extrabold text-muted sm:text-[11px]">
               تاريخ الرحلة
             </span>
 
             <div className="group relative">
-              <FiCalendar className={`${iconClass} group-hover:scale-110`} />
+              <FiCalendar
+                className={`${iconClass} group-hover:scale-110`}
+              />
 
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={fieldClass} />
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className={fieldClass}
+              />
             </div>
           </label>
 
-          <label className="flex min-w-0 flex-col gap-2" style={reveal(1200)}>
+          <label
+            className="flex min-w-0 flex-col gap-2"
+            style={reveal(1200)}
+          >
             <span className="text-[10px] font-extrabold text-muted sm:text-[11px]">
               المسافرين
             </span>
 
             <div className="group relative">
-              <FiUsers className={`${iconClass} group-hover:scale-110`} />
+              <FiUsers
+                className={`${iconClass} group-hover:scale-110`}
+              />
 
-              <select value={people} onChange={(e) => setPeople(e.target.value)} className={fieldClass}>
+              <select
+                value={people}
+                onChange={(e) => setPeople(e.target.value)}
+                className={fieldClass}
+              >
                 <option value="1">1 مسافر</option>
                 <option value="2">2 مسافرين</option>
                 <option value="3">3 مسافرين</option>
