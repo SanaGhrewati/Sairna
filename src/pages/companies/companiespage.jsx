@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FiArrowLeft,
   FiCheck,
@@ -9,10 +9,10 @@ import {
   FiWifi,
   FiZap,
   FiTruck,
-} from "react-icons/fi"
-import { FaBus } from "react-icons/fa"
-import { BsSnow, BsStars } from "react-icons/bs"
-import { useGetCompanies } from "../../hooks/use-companies"
+} from "react-icons/fi";
+import { FaBus } from "react-icons/fa";
+import { BsSnow, BsStars } from "react-icons/bs";
+import { useGetCompanies } from "../../hooks/use-companies";
 
 const companyDetails = {
   1: {
@@ -30,6 +30,7 @@ const companyDetails = {
     destinations: "+12",
     schedule: "يومياً",
   },
+
   2: {
     short: "ف",
     color: "#e69a46",
@@ -44,6 +45,7 @@ const companyDetails = {
     destinations: "+10",
     schedule: "يومياً",
   },
+
   3: {
     short: "ن",
     color: "#5085e6",
@@ -58,6 +60,7 @@ const companyDetails = {
     destinations: "+9",
     schedule: "يومياً",
   },
+
   4: {
     short: "ا",
     color: "#9969ce",
@@ -72,7 +75,7 @@ const companyDetails = {
     destinations: "+8",
     schedule: "يومياً",
   },
-}
+};
 
 const defaultDetails = {
   short: "س",
@@ -87,60 +90,124 @@ const defaultDetails = {
   ],
   destinations: "+8",
   schedule: "يومياً",
-}
+};
 
 function CompaniesPage() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
-  const heroRef = useRef(null)
-  const companiesRef = useRef(null)
-  const ctaRef = useRef(null)
+  const heroRef = useRef(null);
+  const companiesRef = useRef(null);
+  const ctaRef = useRef(null);
 
-  const [heroVisible, setHeroVisible] = useState(false)
-  const [companiesVisible, setCompaniesVisible] = useState(false)
-  const [ctaVisible, setCtaVisible] = useState(false)
+  const [heroVisible, setHeroVisible] = useState(false);
+  const [companiesVisible, setCompaniesVisible] = useState(false);
+  const [ctaVisible, setCtaVisible] = useState(false);
 
   const {
     data: companies = [],
     isLoading,
     isError,
     refetch,
-  } = useGetCompanies()
+  } = useGetCompanies();
 
   useEffect(() => {
-    const observers = []
+    const observers = [];
 
     const createObserver = (element, setter, threshold = 0.15) => {
-      if (!element) return
+      if (!element) return;
 
       const observer = new IntersectionObserver(
         ([entry]) => {
           if (entry.isIntersecting) {
-            setter(true)
-            observer.disconnect()
+            setter(true);
+            observer.disconnect();
           }
         },
         {
           threshold,
           rootMargin: "0px 0px -70px 0px",
-        }
-      )
+        },
+      );
 
-      observer.observe(element)
-      observers.push(observer)
-    }
+      observer.observe(element);
+      observers.push(observer);
+    };
 
-    createObserver(heroRef.current, setHeroVisible, 0.1)
-    createObserver(companiesRef.current, setCompaniesVisible, 0.12)
-    createObserver(ctaRef.current, setCtaVisible, 0.15)
+    createObserver(heroRef.current, setHeroVisible, 0.1);
+    createObserver(companiesRef.current, setCompaniesVisible, 0.12);
+    createObserver(ctaRef.current, setCtaVisible, 0.15);
 
     return () => {
-      observers.forEach((observer) => observer.disconnect())
-    }
-  }, [])
+      observers.forEach((observer) => observer.disconnect());
+    };
+  }, []);
 
   return (
     <main dir="rtl" className="overflow-hidden bg-bg">
+      {/* =========================================================
+          Animated company card border
+      ========================================================== */}
+      <style>{`
+        .company-card {
+          position: relative;
+          isolation: isolate;
+        }
+
+        .company-card::before {
+          content: "";
+          position: absolute;
+          inset: -2px;
+          border-radius: 26px;
+
+          background: conic-gradient(
+            from 0deg,
+            transparent 0deg,
+            transparent 285deg,
+            rgba(10, 169, 155, 0.05) 305deg,
+            rgba(10, 169, 155, 0.22) 325deg,
+            rgba(10, 169, 155, 0.55) 342deg,
+            rgba(10, 169, 155, 1) 355deg,
+            rgba(10, 169, 155, 0.35) 360deg
+          );
+
+          animation: companyBorderSpin 3.2s linear infinite;
+
+          z-index: -2;
+          pointer-events: none;
+        }
+
+        .company-card::after {
+          content: "";
+          position: absolute;
+          inset: 1px;
+          border-radius: 23px;
+
+          background: var(--surface, #ffffff);
+
+          z-index: -1;
+          pointer-events: none;
+        }
+
+        @keyframes companyBorderSpin {
+          from {
+            transform: rotate(0deg);
+          }
+
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .company-card::before {
+            animation: none;
+          }
+        }
+      `}</style>
+
+      {/* =========================================================
+          Hero
+      ========================================================== */}
       <section
         ref={heroRef}
         className="relative overflow-hidden border-b border-border bg-gradient-to-bl from-surface-alt via-bg to-bg px-5 pb-[65px] pt-[65px] sm:px-7 sm:pb-[80px] sm:pt-[80px] lg:pb-[95px] lg:pt-[90px]"
@@ -156,9 +223,7 @@ function CompaniesPage() {
             className="mb-5 flex items-center gap-2 text-[10px] font-bold text-muted sm:text-[11px]"
             style={{
               opacity: heroVisible ? 1 : 0,
-              transform: heroVisible
-                ? "translateY(0)"
-                : "translateY(-20px)",
+              transform: heroVisible ? "translateY(0)" : "translateY(-20px)",
               transition:
                 "opacity 800ms ease, transform 900ms cubic-bezier(0.16,1,0.3,1)",
             }}
@@ -214,20 +279,21 @@ function CompaniesPage() {
               className="mt-4 max-w-[650px] text-[12px] font-medium leading-8 text-muted sm:text-[14px] lg:text-[15px]"
               style={{
                 opacity: heroVisible ? 1 : 0,
-                transform: heroVisible
-                  ? "translateY(0)"
-                  : "translateY(25px)",
+                transform: heroVisible ? "translateY(0)" : "translateY(25px)",
                 transition:
                   "opacity 900ms ease 500ms, transform 1000ms cubic-bezier(0.16,1,0.3,1) 500ms",
               }}
             >
-              تعرّف على شركات النقل الموجودة على سيرنا واختار الخيار الأنسب
-              إلك قبل ما تبدأ رحلتك.
+              تعرّف على شركات النقل الموجودة على سيرنا واختار الخيار الأنسب إلك
+              قبل ما تبدأ رحلتك.
             </p>
           </div>
         </div>
       </section>
 
+      {/* =========================================================
+          Companies
+      ========================================================== */}
       <section
         ref={companiesRef}
         className="relative bg-bg px-5 py-[75px] sm:px-7 sm:py-[100px] lg:py-[115px]"
@@ -294,6 +360,7 @@ function CompaniesPage() {
             )}
           </div>
 
+          {/* Loading */}
           {isLoading && (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {Array.from({ length: 4 }).map((_, index) => (
@@ -302,17 +369,24 @@ function CompaniesPage() {
                   className="h-[405px] animate-pulse rounded-[24px] border border-border bg-surface p-5"
                 >
                   <div className="h-[68px] w-[68px] rounded-[19px] bg-surface-alt" />
+
                   <div className="mt-6 h-5 w-2/3 rounded bg-surface-alt" />
+
                   <div className="mt-4 h-3 w-full rounded bg-surface-alt" />
+
                   <div className="mt-3 h-3 w-4/5 rounded bg-surface-alt" />
+
                   <div className="mt-8 h-10 rounded bg-surface-alt" />
+
                   <div className="mt-4 h-10 rounded bg-surface-alt" />
+
                   <div className="mt-4 h-11 rounded bg-surface-alt" />
                 </div>
               ))}
             </div>
           )}
 
+          {/* Error */}
           {isError && (
             <div
               className="flex flex-col items-center justify-center rounded-[24px] border border-border bg-surface px-5 py-14 text-center shadow-[0_15px_55px_rgba(19,54,72,0.05)]"
@@ -347,6 +421,7 @@ function CompaniesPage() {
             </div>
           )}
 
+          {/* Empty */}
           {!isLoading && !isError && companies.length === 0 && (
             <div
               className="rounded-[24px] border border-border bg-surface px-5 py-14 text-center shadow-[0_15px_55px_rgba(19,54,72,0.05)]"
@@ -371,21 +446,19 @@ function CompaniesPage() {
             </div>
           )}
 
+          {/* Companies Cards */}
           {!isLoading && !isError && companies.length > 0 && (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {companies.map((company, index) => {
-                const details =
-                  companyDetails[company.id] || defaultDetails
+                const details = companyDetails[company.id] || defaultDetails;
 
                 const short =
-                  company.name?.trim()?.charAt(0) ||
-                  details.short ||
-                  "س"
+                  company.name?.trim()?.charAt(0) || details.short || "س";
 
                 return (
                   <article
                     key={company.id}
-                    className="group relative overflow-hidden rounded-[24px] border border-border bg-surface p-5 shadow-[0_15px_55px_rgba(19,54,72,0.055)] transition-all duration-500 hover:-translate-y-3 hover:border-primary/25 hover:shadow-[0_25px_65px_rgba(19,54,72,0.11)]"
+                    className="company-card group relative overflow-hidden rounded-[24px] border border-border bg-surface p-5 shadow-[0_15px_55px_rgba(19,54,72,0.055)] transition-all duration-500 hover:-translate-y-3 hover:border-primary/25 hover:shadow-[0_25px_65px_rgba(19,54,72,0.11)]"
                     style={{
                       opacity: companiesVisible ? 1 : 0,
                       transform: companiesVisible
@@ -398,6 +471,7 @@ function CompaniesPage() {
                       }ms`,
                     }}
                   >
+                    {/* Company glow */}
                     <div
                       className="pointer-events-none absolute -right-20 -top-20 h-40 w-40 rounded-full opacity-0 blur-3xl transition-all duration-700 group-hover:scale-150 group-hover:opacity-100"
                       style={{
@@ -406,6 +480,7 @@ function CompaniesPage() {
                     />
 
                     <div className="relative">
+                      {/* Logo + Rating */}
                       <div className="flex items-start justify-between gap-3">
                         <div
                           className="grid h-[68px] w-[68px] shrink-0 place-items-center overflow-hidden rounded-[19px] text-[30px] font-black shadow-sm transition-all duration-500 group-hover:scale-110 group-hover:rotate-3"
@@ -437,6 +512,7 @@ function CompaniesPage() {
                         </span>
                       </div>
 
+                      {/* Company info */}
                       <div className="mt-6">
                         <div className="flex items-center gap-2">
                           <h3 className="m-0 text-[17px] font-black text-text transition-all duration-300 group-hover:translate-x-[-3px] group-hover:text-primary">
@@ -455,9 +531,10 @@ function CompaniesPage() {
                         </p>
                       </div>
 
+                      {/* Features */}
                       <div className="mt-4 flex min-h-[31px] flex-wrap gap-1.5">
                         {details.features.map((feature, featureIndex) => {
-                          const Icon = feature.icon
+                          const Icon = feature.icon;
 
                           return (
                             <span
@@ -470,10 +547,11 @@ function CompaniesPage() {
                               <Icon className="text-[10px]" />
                               {feature.label}
                             </span>
-                          )
+                          );
                         })}
                       </div>
 
+                      {/* Stats */}
                       <div className="my-5 grid grid-cols-2 gap-3 border-y border-border py-4">
                         <div>
                           <strong className="block text-[17px] font-black text-text">
@@ -496,20 +574,17 @@ function CompaniesPage() {
                         </div>
                       </div>
 
+                      {/* Status */}
                       <div className="mb-4 flex items-center gap-2 text-[9px] font-bold">
                         <span
                           className={`h-2 w-2 rounded-full ${
-                            company.isActive
-                              ? "bg-primary"
-                              : "bg-gray-400"
+                            company.isActive ? "bg-primary" : "bg-gray-400"
                           }`}
                         />
 
                         <span
                           className={
-                            company.isActive
-                              ? "text-primary"
-                              : "text-muted"
+                            company.isActive ? "text-primary" : "text-muted"
                           }
                         >
                           {company.isActive
@@ -518,27 +593,26 @@ function CompaniesPage() {
                         </span>
                       </div>
 
+                      {/* Button */}
                       <button
                         type="button"
                         disabled={!company.isActive}
                         onClick={() =>
-                          navigate(
-                            `/results?companyId=${company.id}`
-                          )
+                          navigate(`/results?companyId=${company.id}`)
                         }
                         className="group/button flex min-h-[42px] w-full items-center justify-center gap-2 rounded-[12px] border border-border bg-surface text-[9px] font-extrabold text-text transition-all duration-300 hover:-translate-y-1 hover:border-primary hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:border-border disabled:hover:bg-surface disabled:hover:text-text"
                       >
                         عرض رحلات الشركة
-
                         <FiArrowLeft className="text-[12px] transition-transform duration-300 group-hover/button:-translate-x-1" />
                       </button>
                     </div>
                   </article>
-                )
+                );
               })}
             </div>
           )}
 
+          {/* Info */}
           <div
             className="mt-7 flex items-start gap-3 rounded-[16px] border border-border bg-surface px-4 py-3.5"
             style={{
@@ -563,6 +637,9 @@ function CompaniesPage() {
         </div>
       </section>
 
+      {/* =========================================================
+          CTA
+      ========================================================== */}
       <section
         ref={ctaRef}
         className="relative overflow-hidden bg-surface px-5 pb-[90px] pt-[25px] sm:px-7 sm:pb-[110px]"
@@ -603,9 +680,7 @@ function CompaniesPage() {
                 className="m-0 text-[27px] font-black leading-[1.4] text-white sm:text-[36px]"
                 style={{
                   opacity: ctaVisible ? 1 : 0,
-                  transform: ctaVisible
-                    ? "translateY(0)"
-                    : "translateY(25px)",
+                  transform: ctaVisible ? "translateY(0)" : "translateY(25px)",
                   transition:
                     "opacity 800ms ease 350ms, transform 900ms cubic-bezier(0.16,1,0.3,1) 350ms",
                 }}
@@ -618,9 +693,7 @@ function CompaniesPage() {
                 className="mx-auto mt-3 max-w-[500px] text-[10px] font-medium leading-7 text-white/55 sm:text-[12px]"
                 style={{
                   opacity: ctaVisible ? 1 : 0,
-                  transform: ctaVisible
-                    ? "translateY(0)"
-                    : "translateY(20px)",
+                  transform: ctaVisible ? "translateY(0)" : "translateY(20px)",
                   transition:
                     "opacity 800ms ease 500ms, transform 900ms ease 500ms",
                 }}
@@ -634,9 +707,7 @@ function CompaniesPage() {
                 className="group mt-5 inline-flex items-center gap-3 rounded-[13px] bg-primary px-6 py-3.5 text-[10px] font-extrabold text-white shadow-[0_10px_25px_rgba(10,169,155,0.18)] transition-all duration-300 hover:-translate-y-1 hover:bg-primary-deep"
               >
                 <FiSearch />
-
                 ابحث عن رحلتك
-
                 <FiArrowLeft className="transition-transform duration-300 group-hover:-translate-x-1" />
               </button>
             </div>
@@ -644,7 +715,7 @@ function CompaniesPage() {
         </div>
       </section>
     </main>
-  )
+  );
 }
 
-export default CompaniesPage
+export default CompaniesPage;
